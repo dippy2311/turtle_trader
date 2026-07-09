@@ -222,11 +222,22 @@ function ScannerTab() {
         ))}
       </div>
 
-      {scanning && !signals.length ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-2)' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
-          <div>Scanning {tab === 'BUY' ? 'NIFTY 100' : 'stocks'}...</div>
-          <div style={{ fontSize: 13, marginTop: 4, color: 'var(--text-3)' }}>Fetching NSE data</div>
+{scanning && !signals.length ? (
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-2)' }}>
+          <div style={{ fontSize: 64, marginBottom: 8, animation: 'run 0.6s infinite alternate' }}>🐂</div>
+          <style>{`@keyframes run { from { transform: translateX(-10px); } to { transform: translateX(10px); } } @keyframes fade { 0%,100%{opacity:0.3} 50%{opacity:1} }`}</style>
+          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--buy)', marginBottom: 8 }}>Scanning NIFTY 500...</div>
+          <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>Fetching live NSE data · Applying Turtle rules</div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
+            {['Fetching prices','Calculating EMAs','Checking breakouts','Scoring signals'].map((s,i) => (
+              <div key={s} style={{ fontSize: 10, background: 'var(--bg-elevated)', borderRadius: 20, padding: '4px 10px', color: 'var(--accent)', animation: `fade 1.5s ${i*0.3}s infinite` }}>{s}</div>
+            ))}
+          </div>
+          <div style={{ background: 'var(--bg-elevated)', borderRadius: 8, height: 6, overflow: 'hidden', maxWidth: 280, margin: '0 auto' }}>
+            <div style={{ height: '100%', background: 'var(--buy)', borderRadius: 8, animation: 'scan-progress 3s ease-in-out infinite' }} />
+          </div>
+          <style>{`@keyframes scan-progress { 0%{width:5%} 50%{width:80%} 100%{width:95%} }`}</style>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 10 }}>This takes 60–90 seconds on first scan</div>
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-2)' }}>
