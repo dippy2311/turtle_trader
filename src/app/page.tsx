@@ -491,7 +491,7 @@ function ChatTab() {
   const suggestions = ['Explain Turtle Trading', 'How to size positions?', 'What is ADX?', 'What is ATR?']
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', paddingBottom: 80 }}>
       <div style={{ padding: '56px 16px 12px', borderBottom: '1px solid var(--border)' }}>
         <div style={{ fontSize: 22, fontWeight: 700 }}>AI Chat 🤖</div>
         <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Rule-based · Free · No API key</div>
@@ -519,7 +519,7 @@ function ChatTab() {
         <div ref={bottomRef} />
       </div>
 
-      <div style={{ padding: '10px 16px 28px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, background: 'var(--bg)' }}>
+      <div style={{ padding: '10px 16px 44px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, background: 'var(--bg)', position: 'sticky' as const, bottom: 0, zIndex: 200 }}>
         <input value={input} onChange={e => setInput(e.target.value)} placeholder="Ask about any NSE stock..."
           onKeyDown={e => e.key === 'Enter' && send()} style={{ flex: 1 }} />
         <button className="btn btn-primary" style={{ padding: '0 16px', minWidth: 44 }} onClick={() => send()} disabled={!input.trim() || loading}>↑</button>
