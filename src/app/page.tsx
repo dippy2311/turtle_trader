@@ -602,7 +602,7 @@ function Candle316Tab() {
         {data&&c316&&!loading&&(
           <>
             <div style={{ background:isGreen?'var(--buy-bg)':'var(--sell-bg)', border:`2px solid ${isGreen?'var(--buy)':'var(--sell)'}`, borderRadius:20, padding:24, textAlign:'center', marginBottom:14 }}>
-              <div style={{ fontSize:15, color:'var(--text-2)', marginBottom:8 }}>{data.symbol} · {c316.time} IST · {data.date}</div>
+              <div style={{ fontSize:15, color:'var(--text-2)', marginBottom:8 }}>{data.symbol} · {c316.time} IST</div> <div style={{ fontSize:12, color:'var(--accent)', marginBottom:8 }}>{data.session_label}</div>
               <div style={{ fontSize:88, lineHeight:1 }}>{isGreen?'🟢':'🔴'}</div>
               <div style={{ fontSize:30, fontWeight:800, color:isGreen?'var(--buy)':'var(--sell)', marginTop:10 }}>
                 {isGreen?'GREEN CANDLE':'RED CANDLE'}
