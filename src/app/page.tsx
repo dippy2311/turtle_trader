@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { ScanSignal, MarketStatus, Position } from '@/types'
 
 const fmt = (n: number) => {
@@ -13,21 +13,6 @@ const sigColor = (s: string) => s==='BUY'?'var(--buy)':s==='SELL'?'var(--sell)':
 
 function Badge({ signal }: { signal: string }) {
   return <span className={`badge badge-${signal}`}>{signal}</span>
-}
-
-function ScoreBar({ label, value, color, weight }: { label: string; value: number; color: string; weight: string }) {
-  return (
-    <div className="score-row">
-      <div style={{ width: 80, display: 'flex', justifyContent: 'space-between' }}>
-        <span className="score-label" style={{ width: 'auto' }}>{label}</span>
-        <span style={{ fontSize: 9, color: 'var(--text-3)' }}>{weight}</span>
-      </div>
-      <div className="score-bar-bg" style={{ flex: 1 }}>
-        <div className="score-bar-fill" style={{ width: `${value}%`, background: color }} />
-      </div>
-      <span className="score-val" style={{ color }}>{value}</span>
-    </div>
-  )
 }
 
 function Gauge({ score }: { score: number }) {
@@ -50,6 +35,131 @@ function Gauge({ score }: { score: number }) {
       </svg>
       <span style={{ fontSize:14, fontWeight:700, color, marginTop:-4 }}>{label}</span>
     </div>
+  )
+}
+
+function ChargingBull() {
+  return (
+    <svg width="100%" viewBox="0 0 680 360" role="img" xmlns="http://www.w3.org/2000/svg">
+      <title>Charging bull scanning animation</title>
+      <desc>Powerful charging bull scanning NSE stocks</desc>
+      <defs>
+        <style>{`
+          @keyframes bodyBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+          @keyframes legFL { 0%,100%{transform:rotate(-20deg)} 50%{transform:rotate(25deg)} }
+          @keyframes legFR { 0%,100%{transform:rotate(25deg)} 50%{transform:rotate(-20deg)} }
+          @keyframes legBL { 0%,100%{transform:rotate(15deg)} 50%{transform:rotate(-25deg)} }
+          @keyframes legBR { 0%,100%{transform:rotate(-25deg)} 50%{transform:rotate(15deg)} }
+          @keyframes tailWag { 0%,100%{transform:rotate(-10deg)} 50%{transform:rotate(30deg)} }
+          @keyframes eyeGlow { 0%,100%{opacity:0.7} 50%{opacity:1} }
+          @keyframes trailFade { 0%{opacity:0.6;transform:translateX(0) scaleX(1)} 100%{opacity:0;transform:translateX(-30px) scaleX(0.2)} }
+          @keyframes tp0 { 0%,100%{opacity:0.2} 50%{opacity:1} }
+          @keyframes tp1 { 0%,100%{opacity:0.2} 50%{opacity:1} }
+          @keyframes tp2 { 0%,100%{opacity:0.2} 50%{opacity:1} }
+          @keyframes tp3 { 0%,100%{opacity:0.2} 50%{opacity:1} }
+          .g-body { animation:bodyBob 0.55s ease-in-out infinite; transform-origin:350px 185px; }
+          .g-lfl  { animation:legFL 0.55s ease-in-out infinite; transform-origin:285px 228px; }
+          .g-lfr  { animation:legFR 0.55s ease-in-out infinite; transform-origin:307px 228px; }
+          .g-lbl  { animation:legBL 0.55s ease-in-out infinite; transform-origin:389px 228px; }
+          .g-lbr  { animation:legBR 0.55s ease-in-out infinite; transform-origin:411px 228px; }
+          .g-tail { animation:tailWag 0.55s ease-in-out infinite; transform-origin:438px 175px; }
+          .g-eye  { animation:eyeGlow 0.8s ease-in-out infinite; }
+          .tr1 { animation:trailFade 0.55s linear infinite 0s; }
+          .tr2 { animation:trailFade 0.55s linear infinite 0.18s; }
+          .tr3 { animation:trailFade 0.55s linear infinite 0.36s; }
+          .tg0 { animation:tp0 2s 0.0s infinite; }
+          .tg1 { animation:tp1 2s 0.4s infinite; }
+          .tg2 { animation:tp2 2s 0.8s infinite; }
+          .tg3 { animation:tp3 2s 1.2s infinite; }
+        `}</style>
+        <linearGradient id="pg" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#00C087"/>
+          <stop offset="100%" stopColor="#5B6CF9"/>
+        </linearGradient>
+      </defs>
+
+      <rect width="680" height="360" fill="#0A0A0F"/>
+      <line x1="80" y1="272" x2="600" y2="272" stroke="#1E1E2E" strokeWidth="1.5"/>
+      <ellipse cx="345" cy="274" rx="115" ry="7" fill="#00C087" opacity="0.07"/>
+
+      <ellipse className="tr1" cx="195" cy="198" rx="55" ry="14" fill="#00C087"/>
+      <ellipse className="tr2" cx="165" cy="198" rx="38" ry="10" fill="#00C087"/>
+      <ellipse className="tr3" cx="142" cy="198" rx="22" ry="6" fill="#00C087"/>
+
+      <g className="g-body">
+        <g className="g-tail">
+          <path fill="none" stroke="#00C087" strokeWidth="3" strokeLinecap="round" d="M438,178 Q458,162 462,143 Q466,124 455,112"/>
+          <ellipse cx="455" cy="110" rx="5" ry="7" fill="#00C087" opacity="0.8"/>
+        </g>
+        <ellipse cx="348" cy="192" rx="105" ry="65" fill="#111120" stroke="#00C087" strokeWidth="1.8"/>
+        <ellipse cx="268" cy="178" rx="52" ry="48" fill="#111120" stroke="#00C087" strokeWidth="1.5"/>
+        <ellipse cx="418" cy="188" rx="42" ry="45" fill="#111120" stroke="#00C087" strokeWidth="1.5"/>
+        <path fill="none" stroke="#00C087" strokeWidth="2.2" d="M238,148 Q270,132 320,138 Q360,142 400,145 Q430,148 448,162"/>
+        <path fill="none" stroke="#00C087" strokeWidth="1.2" opacity="0.5" d="M248,218 Q300,232 350,233 Q400,233 440,222"/>
+        <path fill="#111120" stroke="#00C087" strokeWidth="1.8" d="M248,218 Q232,208 222,192 Q210,172 215,148 Q220,130 235,122 Q250,114 268,118 Q284,122 292,138 Q298,152 295,170 Q292,188 280,200 Z"/>
+        <path fill="#111120" stroke="#00C087" strokeWidth="2" d="M168,148 Q172,118 192,108 Q212,98 232,102 Q252,106 258,122 Q264,138 256,155 Q248,168 230,172 Q210,174 192,165 Q174,156 168,148 Z"/>
+        <ellipse cx="175" cy="152" rx="22" ry="16" fill="#0d0d1a" stroke="#00C087" strokeWidth="1.5"/>
+        <ellipse cx="168" cy="154" rx="5" ry="4" fill="#00C087" opacity="0.6"/>
+        <ellipse cx="181" cy="154" rx="5" ry="4" fill="#00C087" opacity="0.6"/>
+        <g className="g-eye">
+          <circle cx="228" cy="118" r="9" fill="#00C087" opacity="0.25"/>
+          <circle cx="228" cy="118" r="6" fill="#00C087"/>
+          <circle cx="228" cy="118" r="3" fill="#0A0A0F"/>
+          <circle cx="230" cy="116" r="1.5" fill="#00C087" opacity="0.8"/>
+        </g>
+        <path fill="none" stroke="#00C087" strokeWidth="3" strokeLinecap="round" d="M215,103 Q205,78 198,58 Q194,44 202,36"/>
+        <path fill="none" stroke="#00C087" strokeWidth="4" strokeLinecap="round" d="M235,102 Q242,75 252,55 Q258,40 268,34"/>
+        <circle cx="202" cy="34" r="3" fill="#00C087" opacity="0.7"/>
+        <circle cx="270" cy="33" r="4" fill="#00C087" opacity="0.9"/>
+        <ellipse cx="248" cy="105" rx="10" ry="7" fill="#111120" stroke="#00C087" strokeWidth="1.5" transform="rotate(-25 248 105)"/>
+        <g className="g-lfl">
+          <rect x="278" y="228" width="14" height="52" rx="6" fill="#111120" stroke="#00C087" strokeWidth="1.8"/>
+          <ellipse cx="285" cy="282" rx="10" ry="6" fill="#00C087" opacity="0.8"/>
+          <ellipse cx="285" cy="250" rx="9" ry="7" fill="#111120" stroke="#00C087" strokeWidth="1.2"/>
+        </g>
+        <g className="g-lfr">
+          <rect x="300" y="228" width="14" height="52" rx="6" fill="#111120" stroke="#00C087" strokeWidth="1.8"/>
+          <ellipse cx="307" cy="282" rx="10" ry="6" fill="#00C087" opacity="0.8"/>
+          <ellipse cx="307" cy="250" rx="9" ry="7" fill="#111120" stroke="#00C087" strokeWidth="1.2"/>
+        </g>
+        <g className="g-lbl">
+          <rect x="382" y="228" width="14" height="52" rx="6" fill="#111120" stroke="#00C087" strokeWidth="1.8"/>
+          <ellipse cx="389" cy="282" rx="10" ry="6" fill="#00C087" opacity="0.8"/>
+          <ellipse cx="389" cy="248" rx="10" ry="8" fill="#111120" stroke="#00C087" strokeWidth="1.2"/>
+        </g>
+        <g className="g-lbr">
+          <rect x="404" y="228" width="14" height="52" rx="6" fill="#111120" stroke="#00C087" strokeWidth="1.8"/>
+          <ellipse cx="411" cy="282" rx="10" ry="6" fill="#00C087" opacity="0.8"/>
+          <ellipse cx="411" cy="248" rx="10" ry="8" fill="#111120" stroke="#00C087" strokeWidth="1.2"/>
+        </g>
+        <ellipse cx="195" cy="175" rx="16" ry="10" fill="#111120" stroke="#00C087" strokeWidth="1.2" opacity="0.8"/>
+      </g>
+
+      <text x="340" y="306" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="15" fontWeight="700" fill="#00C087" letterSpacing="4">SCANNING NIFTY 500</text>
+      <text x="340" y="324" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="11" fill="#8888AA">Fetching live NSE data · Applying Turtle Trading rules</text>
+
+      <rect x="200" y="333" width="280" height="6" rx="3" fill="#1E1E2E"/>
+      <rect x="200" y="333" height="6" rx="3" fill="url(#pg)">
+        <animate attributeName="width" values="15;250;15" dur="2.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
+      </rect>
+
+      <g className="tg0">
+        <rect x="30" y="60" width="108" height="24" rx="12" fill="#00C08718" stroke="#00C087" strokeWidth="1"/>
+        <text x="84" y="76" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="10" fontWeight="600" fill="#00C087">Fetching prices</text>
+      </g>
+      <g className="tg1">
+        <rect x="30" y="95" width="114" height="24" rx="12" fill="#5B6CF918" stroke="#5B6CF9" strokeWidth="1"/>
+        <text x="87" y="111" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="10" fontWeight="600" fill="#5B6CF9">Calculating EMAs</text>
+      </g>
+      <g className="tg2">
+        <rect x="540" y="60" width="112" height="24" rx="12" fill="#FFB30018" stroke="#FFB300" strokeWidth="1"/>
+        <text x="596" y="76" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="10" fontWeight="600" fill="#FFB300">Scoring signals</text>
+      </g>
+      <g className="tg3">
+        <rect x="530" y="95" width="122" height="24" rx="12" fill="#00C08718" stroke="#00C087" strokeWidth="1"/>
+        <text x="591" y="111" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="10" fontWeight="600" fill="#00C087">Finding BUY signals</text>
+      </g>
+    </svg>
   )
 }
 
@@ -164,20 +274,17 @@ function ScannerTab() {
   const [counts,setCounts]=useState({BUY:0,SELL:0,WATCH:0,HOLD:0})
   const [tab,setTab]=useState<'BUY'|'SELL'|'WATCH'>('BUY')
   const [scanning,setScanning]=useState(false)
-  const [meta,setMeta]=useState<{scan_date?:string;total_scanned?:number;cached?:boolean}>({})
-  const [progress,setProgress]=useState(0)
+  const [meta,setMeta]=useState<any>({})
 
   const runScan=useCallback(async(force=false)=>{
-    setScanning(true); setProgress(0)
-    const timer=setInterval(()=>setProgress(p=>Math.min(p+2,90)),800)
+    setScanning(true)
     try {
       const res=await fetch(`/api/scan${force?'?force=1':''}`)
       const data=await res.json()
       setSignals(data.signals??[])
       setCounts(data.counts??{BUY:0,SELL:0,WATCH:0,HOLD:0})
       setMeta({scan_date:data.scan_date,total_scanned:data.total_scanned,cached:data.cached})
-      setProgress(100)
-    } finally { clearInterval(timer); setScanning(false) }
+    } finally { setScanning(false) }
   },[])
 
   useEffect(()=>{ if(!signals.length) runScan() },[])
@@ -205,161 +312,8 @@ function ScannerTab() {
       </div>
 
       {scanning&&!signals.length?(
-        <div style={{ padding:'32px 16px 40px' }}>
-          {/* ── Keyframe definitions ── */}
-          <style>{`
-            @keyframes bull-bob    { 0%,100%{transform:translateY(0)}   50%{transform:translateY(-5px)} }
-            @keyframes leg-a       { 0%,100%{transform:rotate(-30deg)}  50%{transform:rotate(24deg)}  }
-            @keyframes leg-b       { 0%,100%{transform:rotate(24deg)}   50%{transform:rotate(-30deg)} }
-            @keyframes leg-c       { 0%,100%{transform:rotate(-22deg)}  50%{transform:rotate(32deg)}  }
-            @keyframes leg-d       { 0%,100%{transform:rotate(32deg)}   50%{transform:rotate(-22deg)} }
-            @keyframes tail-w      { 0%,100%{transform:rotate(-18deg)}  50%{transform:rotate(20deg)}  }
-            @keyframes dust-a      { 0%{transform:translate(0,0) scale(1);opacity:.55} 100%{transform:translate(-20px,-12px) scale(2.2);opacity:0} }
-            @keyframes dust-b      { 0%{transform:translate(0,0) scale(1);opacity:.4}  100%{transform:translate(-28px,-4px)  scale(2.5);opacity:0} }
-            @keyframes dust-c      { 0%{transform:translate(0,0) scale(1);opacity:.35} 100%{transform:translate(-14px,-18px) scale(1.8);opacity:0} }
-            @keyframes label-fade  { 0%,100%{opacity:.3} 50%{opacity:1} }
-          `}</style>
-
-          {/* Heading */}
-          <div style={{ textAlign:'center', marginBottom:28 }}>
-            <div style={{ fontSize:21, fontWeight:700, color:'var(--buy)', letterSpacing:'-0.3px' }}>Scanning NIFTY 500...</div>
-            <div style={{ fontSize:13, color:'var(--text-3)', marginTop:5 }}>Fetching live NSE data · Applying Turtle rules</div>
-          </div>
-
-          {/* ── Bull + Track ── */}
-          <div style={{ position:'relative', margin:'0 auto', maxWidth:320, height:90 }}>
-
-            {/* Ground track */}
-            <div style={{ position:'absolute', bottom:12, left:0, right:0, height:3, background:'var(--border)', borderRadius:2 }}/>
-
-            {/* Progress fill on track */}
-            <div style={{ position:'absolute', bottom:12, left:0, height:3, width:`${progress}%`, background:'linear-gradient(90deg,var(--buy),var(--accent))', borderRadius:2, transition:'width 0.5s ease' }}/>
-
-            {/* Hoofmarks — small paired dots left behind on the track */}
-            {[10,18,26,34,42,50].map((behind,i)=>{
-              const xPct=Math.max(0,progress-behind)
-              return xPct>1?(
-                <Fragment key={i}>
-                  <div style={{ position:'absolute', bottom:16, left:`calc(${xPct}% - 3px)`, width:3, height:4, borderRadius:'50% 50% 0 0', background:'var(--buy)', opacity:0.1+(5-i)*0.07 }}/>
-                  <div style={{ position:'absolute', bottom:16, left:`calc(${xPct}% + 2px)`, width:3, height:4, borderRadius:'50% 50% 0 0', background:'var(--buy)', opacity:0.08+(5-i)*0.06 }}/>
-                </Fragment>
-              ):null
-            })}
-
-            {/* Bull wrapper — moves with progress */}
-            <div style={{
-              position:'absolute',
-              bottom:15,
-              left:`calc(${Math.min(progress,91)}% - 54px)`,
-              transition:'left 0.5s ease',
-              animation:'bull-bob 0.32s ease-in-out infinite',
-            }}>
-
-              {/* Dust cloud (sits behind bull, slightly left) */}
-              <svg style={{ position:'absolute', left:0, bottom:0, overflow:'visible', pointerEvents:'none' }} width="1" height="1">
-                <circle cx="6" cy="4"  r="3.5" fill="var(--text-3)" style={{ animation:'dust-a 0.95s ease-out infinite' }}/>
-                <circle cx="12" cy="8" r="2.5" fill="var(--text-3)" style={{ animation:'dust-b 0.95s 0.28s ease-out infinite' }}/>
-                <circle cx="2"  cy="1" r="2"   fill="var(--text-3)" style={{ animation:'dust-c 0.95s 0.55s ease-out infinite' }}/>
-              </svg>
-
-              {/*
-                ════════════════════════════════════════
-                NSE-STYLE CHARGING BULL  (90 × 62 viewBox)
-                Head lowered, charging right, full gallop
-                ════════════════════════════════════════
-              */}
-              <svg width="90" height="62" viewBox="0 0 90 62" fill="none">
-
-                {/* Ground shadow */}
-                <ellipse cx="43" cy="60" rx="26" ry="3" fill="black" opacity="0.1"/>
-
-                {/* ── BACK LEGS (behind body) ── */}
-                {/* Back-left (far side, slightly darker) */}
-                <g style={{ transformOrigin:'22px 37px', transformBox:'fill-box', animation:'leg-b 0.32s ease-in-out infinite' }}>
-                  <path d="M19 37 Q16 44 15 50 L19 52 L23 50 Q24 44 25 37 Z" fill="#1d7a1d"/>
-                </g>
-                {/* Back-right (near side) */}
-                <g style={{ transformOrigin:'28px 37px', transformBox:'fill-box', animation:'leg-a 0.32s ease-in-out infinite' }}>
-                  <path d="M25 37 Q22 44 21 50 L25 52 L30 50 Q31 44 32 37 Z" fill="var(--buy)"/>
-                </g>
-
-                {/* ── MAIN BODY ── */}
-                {/* Barrel / torso */}
-                <path d="M13 22 C17 12 31 9 44 11 C57 13 65 17 68 23 C72 30 70 38 63 39 C52 40 34 39 22 39 C13 39 9 34 11 27 Z" fill="var(--buy)"/>
-
-                {/* Shoulder / withers hump — gives the bull that powerful silhouette */}
-                <path d="M40 11 C43 5 51 4 54 8 C57 12 54 17 50 18 C44 19 38 16 40 12 Z" fill="var(--buy)"/>
-
-                {/* Underbelly muscle line */}
-                <path d="M22 39 C32 41 52 41 63 39" stroke="#1d7a1d" strokeWidth="1.2" fill="none" opacity="0.45"/>
-
-                {/* ── NECK ── */}
-                <path d="M64 20 C68 15 76 14 80 18 C78 23 71 26 67 25 Z" fill="var(--buy)"/>
-
-                {/* ── HEAD (lowered — charging stance) ── */}
-                <path d="M66 18 C70 12 79 11 84 16 C88 20 87 30 83 33 C79 37 71 36 68 30 C65 25 64 21 66 18 Z" fill="var(--buy)"/>
-
-                {/* Forehead crease */}
-                <path d="M70 13 C75 10 81 11 84 15" stroke="#1d7a1d" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.5"/>
-
-                {/* ── HORNS (golden, iconic) ── */}
-                {/* Upper horn — sweeps forward and up */}
-                <path d="M81 13 C84 9 88 7 90 9 C88 11 85 12 82 16" fill="#D4A017"/>
-                {/* Lower horn — shorter, angles forward */}
-                <path d="M84 17 C87 14 89 14 90 16 C88 17 86 17 84 18" fill="#D4A017"/>
-
-                {/* ── MUZZLE / NOSE ── */}
-                <ellipse cx="85" cy="27" rx="4.5" ry="4" fill="#155c15"/>
-                {/* Nostrils */}
-                <circle cx="83.5" cy="26" r="1.3" fill="#092909"/>
-                <circle cx="86"   cy="28" r="1.3" fill="#092909"/>
-                {/* Nose highlight */}
-                <ellipse cx="84" cy="24.5" rx="2" ry="1" fill="white" opacity="0.12"/>
-
-                {/* ── EYE ── */}
-                <circle cx="76" cy="19" r="2.8" fill="#092909"/>
-                <circle cx="76.8" cy="18.2" r="1" fill="white"/>
-                {/* Eyebrow ridge — shows intensity / anger */}
-                <path d="M73 16 C75 14 78 14 80 16" stroke="#1d7a1d" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.7"/>
-
-                {/* ── EAR ── */}
-                <path d="M73 15 L70 8 L77 13 Z" fill="#1d7a1d" opacity="0.88"/>
-
-                {/* ── FRONT LEGS (over body) ── */}
-                {/* Front-left (far side) */}
-                <g style={{ transformOrigin:'55px 39px', transformBox:'fill-box', animation:'leg-d 0.32s ease-in-out infinite' }}>
-                  <path d="M52 39 Q49 46 48 52 L52 54 L57 52 Q58 46 59 39 Z" fill="#1d7a1d"/>
-                </g>
-                {/* Front-right (near side, brightest) */}
-                <g style={{ transformOrigin:'62px 39px', transformBox:'fill-box', animation:'leg-c 0.32s ease-in-out infinite' }}>
-                  <path d="M58 39 Q55 46 55 52 L59 54 L64 52 Q65 46 65 39 Z" fill="var(--buy)"/>
-                </g>
-
-                {/* ── TAIL (swishing upward behind the run) ── */}
-                <g style={{ transformOrigin:'13px 27px', transformBox:'fill-box', animation:'tail-w 0.32s ease-in-out infinite' }}>
-                  <path d="M13 27 C7 20 3 14 6 8 C7 4 11 3 12 7" stroke="var(--buy)" strokeWidth="2.8" fill="none" strokeLinecap="round"/>
-                  <circle cx="12" cy="7" r="3.5" fill="#1d7a1d"/>
-                </g>
-
-              </svg>
-            </div>{/* end bull wrapper */}
-          </div>{/* end track container */}
-
-          {/* Progress % readout */}
-          <div style={{ textAlign:'center', marginTop:4, marginBottom:20 }}>
-            <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums', color:'var(--text-3)', letterSpacing:'0.5px' }}>
-              {progress}% complete
-            </span>
-          </div>
-
-          {/* Animated scanning labels */}
-          <div style={{ display:'flex', justifyContent:'center', flexWrap:'wrap', gap:6, marginBottom:14 }}>
-            {['Fetching prices','Calculating EMAs','Checking breakouts','Scoring signals','Finding BUY signals'].map((s,i)=>(
-              <div key={s} style={{ fontSize:10, background:'var(--bg-elevated)', borderRadius:20, padding:'4px 10px', color:'var(--accent)', animation:`label-fade 1.8s ${i*0.35}s infinite` }}>{s}</div>
-            ))}
-          </div>
-
-          <div style={{ textAlign:'center', fontSize:12, color:'var(--text-3)' }}>First scan takes 60–90 seconds · Results cached for the day</div>
+        <div style={{ padding:'0 0 20px' }}>
+          <ChargingBull/>
         </div>
       ):filtered.length===0?(
         <div style={{ textAlign:'center', padding:60, color:'var(--text-2)' }}>
@@ -418,17 +372,13 @@ function PortfolioTab() {
   const [data,setData]=useState<any>(null)
   const [loading,setLoading]=useState(true)
 
-  const load=useCallback(async()=>{
+  useEffect(()=>{
     const uid=localStorage.getItem('uid')??''
-    const res=await fetch('/api/portfolio',{headers:{'x-user-id':uid}})
-    setData(await res.json())
-    setLoading(false)
+    fetch('/api/portfolio',{headers:{'x-user-id':uid}}).then(r=>r.json()).then(setData).finally(()=>setLoading(false))
   },[])
 
-  useEffect(()=>{ load() },[])
-
   const summary=data?.summary??{}
-  const positions:Position[]=data?.positions??[]
+  const positions=data?.positions??[]
   const pnlColor=(summary.total_pnl??0)>=0?'var(--buy)':'var(--sell)'
 
   return (
@@ -456,14 +406,13 @@ function PortfolioTab() {
           </div>
         )}
       </div>
-
       <div style={{ marginTop:16, marginBottom:8, fontWeight:600 }}>Open Positions ({positions.length})</div>
       {loading?<div className="skeleton" style={{ height:140, borderRadius:12 }}/>
       :positions.length===0?(
         <div style={{ textAlign:'center', padding:50, color:'var(--text-2)' }}>
           <div style={{ fontSize:36 }}>📭</div>
           <div style={{ fontWeight:600, marginTop:8 }}>No open positions</div>
-          <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Buy signals from the Scanner to get started</div>
+          <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Buy signals from Scanner to get started</div>
         </div>
       ):positions.map((pos:any)=>(
         <a key={pos.id} href={`/stock/${pos.symbol}`}>
@@ -479,10 +428,10 @@ function PortfolioTab() {
               </div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-              {[['Qty',String(pos.quantity)],['Avg',fmt(pos.avg_price)],['LTP',fmt(pos.current_price)],['Stop',fmt(pos.stop_loss),'var(--sell)']].map(([l,v,c])=>(
+              {[['Qty',String(pos.quantity),null],['Avg',fmt(pos.avg_price),null],['LTP',fmt(pos.current_price),null],['Stop',fmt(pos.stop_loss),'var(--sell)']].map(([l,v,c])=>(
                 <div key={l} style={{ background:'var(--bg-elevated)', borderRadius:6, padding:8 }}>
                   <div style={{ fontSize:10, color:'var(--text-3)' }}>{l}</div>
-                  <div style={{ fontSize:13, fontWeight:600, color:(c as string)??(('var(--text)') as string) }}>{v}</div>
+                  <div style={{ fontSize:13, fontWeight:600, color:(c as string)??'var(--text)' }}>{v}</div>
                 </div>
               ))}
             </div>
@@ -501,13 +450,8 @@ function WatchlistTab() {
 
   const load=async()=>{
     const uid=localStorage.getItem('uid')??''
-    try {
-      const res=await fetch('/api/watchlist',{headers:{'x-user-id':uid}})
-      const json=await res.json()
-      setLists(json.data??[])
-    } catch {}
+    try { const r=await fetch('/api/watchlist',{headers:{'x-user-id':uid}}); const j=await r.json(); setLists(j.data??[]) } catch {}
   }
-
   useEffect(()=>{ load() },[])
 
   const create=async()=>{
@@ -533,7 +477,6 @@ function WatchlistTab() {
         <div style={{ textAlign:'center', padding:50, color:'var(--text-2)' }}>
           <div style={{ fontSize:36 }}>👁</div>
           <div style={{ fontWeight:600, marginTop:8 }}>No watchlists yet</div>
-          <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Create one to track stocks</div>
         </div>
       ):lists.map((wl:any)=>(
         <div key={wl.id} className="card" style={{ marginBottom:10, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -590,7 +533,7 @@ function SettingsTab() {
   )
 }
 
-// ── 3:16 PM CANDLE ────────────────────────────────────────────────────────────
+// ── 3:16 PM ───────────────────────────────────────────────────────────────────
 function Candle316Tab() {
   const [symbol,setSymbol]=useState('')
   const [data,setData]=useState<any>(null)
@@ -607,10 +550,9 @@ function Candle316Tab() {
       const json=await res.json()
       if(json.error) throw new Error(json.error)
       setData(json)
-      setHistory(h=>[{symbol:s,color:json.candle_316?.color,time:json.candle_316?.time},...h.filter((x:any)=>x.symbol!==s)].slice(0,10))
-    } catch(e:any) {
-      setError(e.message)
-    } finally { setLoading(false) }
+      setHistory(h=>[{symbol:s,color:json.candle_316?.color},...h.filter((x:any)=>x.symbol!==s)].slice(0,10))
+    } catch(e:any) { setError(e.message) }
+    finally { setLoading(false) }
   }
 
   const c316=data?.candle_316
@@ -629,7 +571,7 @@ function Candle316Tab() {
         <div style={{ display:'flex', gap:10, marginBottom:14 }}>
           <input value={symbol} onChange={e=>setSymbol(e.target.value.toUpperCase())}
             onKeyDown={e=>e.key==='Enter'&&lookup()}
-            placeholder="Type NSE symbol e.g. RELIANCE"
+            placeholder="Type any NSE symbol e.g. RELIANCE"
             style={{ flex:1, textTransform:'uppercase', fontWeight:600 }}/>
           <button className="btn btn-primary" style={{ padding:'0 20px', minWidth:70 }}
             onClick={()=>lookup()} disabled={loading||!symbol.trim()}>
@@ -638,7 +580,7 @@ function Candle316Tab() {
         </div>
 
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:16 }}>
-          {['RELIANCE','TCS','HDFCBANK','INFY','SBIN','TATAMOTORS','IRFC','RVNL'].map(s=>(
+          {['RELIANCE','TCS','HDFCBANK','INFY','SBIN','TATAMOTORS','IRFC','RVNL','HAL','BEL'].map(s=>(
             <button key={s} onClick={()=>{ setSymbol(s); lookup(s) }}
               style={{ background:'var(--bg-elevated)', border:'1px solid var(--border)', borderRadius:20, padding:'5px 14px', fontSize:12, color:'var(--text-2)', cursor:'pointer', fontWeight:600 }}>{s}</button>
           ))}
@@ -653,13 +595,12 @@ function Candle316Tab() {
         {loading&&(
           <div style={{ textAlign:'center', padding:40 }}>
             <div style={{ fontSize:48, marginBottom:12 }}>🕯️</div>
-            <div style={{ color:'var(--text-2)' }}>Fetching 3:16 PM candle data...</div>
+            <div style={{ color:'var(--text-2)' }}>Fetching 3:16 PM candle...</div>
           </div>
         )}
 
         {data&&c316&&!loading&&(
           <>
-            {/* BIG RESULT */}
             <div style={{ background:isGreen?'var(--buy-bg)':'var(--sell-bg)', border:`2px solid ${isGreen?'var(--buy)':'var(--sell)'}`, borderRadius:20, padding:24, textAlign:'center', marginBottom:14 }}>
               <div style={{ fontSize:15, color:'var(--text-2)', marginBottom:8 }}>{data.symbol} · {c316.time} IST · {data.date}</div>
               <div style={{ fontSize:88, lineHeight:1 }}>{isGreen?'🟢':'🔴'}</div>
@@ -672,7 +613,6 @@ function Candle316Tab() {
               </div>
             </div>
 
-            {/* OHLC */}
             <div className="card" style={{ marginBottom:14 }}>
               <div style={{ fontWeight:700, marginBottom:12 }}>3:16 PM Candle Details</div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
@@ -685,7 +625,6 @@ function Candle316Tab() {
               </div>
             </div>
 
-            {/* DAY CANDLE */}
             <div className="card" style={{ marginBottom:14 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
                 <div style={{ fontWeight:700 }}>Full Day Candle</div>
@@ -703,7 +642,6 @@ function Candle316Tab() {
               </div>
             </div>
 
-            {/* GAP ANALYSIS */}
             {data.gap_pct!==0&&(
               <div className="card" style={{ marginBottom:14 }}>
                 <div style={{ fontWeight:700, marginBottom:8 }}>Gap Analysis</div>
@@ -720,7 +658,6 @@ function Candle316Tab() {
           </>
         )}
 
-        {/* HISTORY */}
         {history.length>0&&!data&&!loading&&(
           <div>
             <div style={{ fontSize:12, color:'var(--text-3)', marginBottom:10, fontWeight:600, textTransform:'uppercase', letterSpacing:1 }}>Recent Lookups</div>
@@ -743,7 +680,7 @@ function Candle316Tab() {
               Type any NSE symbol above.<br/>
               See if the 3:16 PM candle is<br/>
               <span style={{ color:'var(--buy)', fontWeight:700 }}>🟢 Green</span> or <span style={{ color:'var(--sell)', fontWeight:700 }}>🔴 Red</span><br/>
-              <span style={{ fontSize:11, color:'var(--text-3)', marginTop:8, display:'block' }}>Works for ALL NSE stocks — not just NIFTY 500</span>
+              <span style={{ fontSize:11, color:'var(--text-3)', marginTop:8, display:'block' }}>Works for ALL NSE listed stocks</span>
             </div>
           </div>
         )}
@@ -775,39 +712,30 @@ function ChatTab() {
     }
   }
 
-  const suggestions=['Explain Turtle Trading','How to size positions?','What is ADX?','What is ATR?']
-
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh' }}>
       <div style={{ padding:'56px 16px 12px', borderBottom:'1px solid var(--border)' }}>
         <div style={{ fontSize:22, fontWeight:700 }}>AI Chat 🤖</div>
         <div style={{ fontSize:13, color:'var(--text-2)' }}>Rule-based · Free · No API key</div>
       </div>
-
       <div style={{ flex:1, overflowY:'auto', padding:16, display:'flex', flexDirection:'column', gap:10 }}>
         {messages.map((m,i)=>(
           <div key={i} style={{ display:'flex', justifyContent:m.role==='user'?'flex-end':'flex-start' }}>
             <div className={m.role==='user'?'bubble bubble-user':'bubble bubble-ai'}>{m.text}</div>
           </div>
         ))}
-        {loading&&(
-          <div style={{ display:'flex' }}>
-            <div className="bubble bubble-ai" style={{ color:'var(--text-2)' }}>Thinking...</div>
-          </div>
-        )}
+        {loading&&<div style={{ display:'flex' }}><div className="bubble bubble-ai" style={{ color:'var(--text-2)' }}>Thinking...</div></div>}
         {messages.length<=1&&(
           <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:8 }}>
-            {suggestions.map(s=>(
+            {['Explain Turtle Trading','How to size positions?','What is ADX?','What is ATR?'].map(s=>(
               <button key={s} onClick={()=>send(s)} style={{ background:'var(--bg-elevated)', border:'1px solid var(--border)', borderRadius:'var(--radius-full)', padding:'6px 14px', fontSize:13, color:'var(--text-2)', cursor:'pointer' }}>{s}</button>
             ))}
           </div>
         )}
         <div ref={bottomRef}/>
       </div>
-
       <div style={{ padding:'10px 16px 44px', borderTop:'1px solid var(--border)', display:'flex', gap:10, background:'var(--bg)', position:'sticky' as const, bottom:0, zIndex:200 }}>
-        <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask about any NSE stock..."
-          onKeyDown={e=>e.key==='Enter'&&send()} style={{ flex:1 }}/>
+        <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask about any NSE stock..." onKeyDown={e=>e.key==='Enter'&&send()} style={{ flex:1 }}/>
         <button className="btn btn-primary" style={{ padding:'0 16px', minWidth:44 }} onClick={()=>send()} disabled={!input.trim()||loading}>↑</button>
       </div>
     </div>
@@ -838,9 +766,8 @@ function AuthScreen({ onAuth }: { onAuth:()=>void }) {
         localStorage.setItem('uid',data.user?.id??'')
       }
       onAuth()
-    } catch(e:any) {
-      setError(e.message)
-    } finally { setLoading(false) }
+    } catch(e:any) { setError(e.message) }
+    finally { setLoading(false) }
   }
 
   return (
@@ -870,24 +797,21 @@ function AuthScreen({ onAuth }: { onAuth:()=>void }) {
   )
 }
 
-// ── ROOT APP ──────────────────────────────────────────────────────────────────
-const NAV = [
-  { id:'home',      icon:'🏠', label:'Home' },
-  { id:'scanner',   icon:'🔍', label:'Scanner' },
-  { id:'portfolio', icon:'📊', label:'Portfolio' },
-  { id:'watchlist', icon:'👁', label:'Watchlist' },
-  { id:'settings',  icon:'⚙️', label:'Settings' },
-  { id:'candle316', icon:'🕯️', label:'3:16 PM' },
+// ── ROOT ──────────────────────────────────────────────────────────────────────
+const NAV=[
+  {id:'home',      icon:'🏠', label:'Home'},
+  {id:'scanner',   icon:'🔍', label:'Scanner'},
+  {id:'portfolio', icon:'📊', label:'Portfolio'},
+  {id:'watchlist', icon:'👁', label:'Watchlist'},
+  {id:'settings',  icon:'⚙️', label:'Settings'},
+  {id:'candle316', icon:'🕯️', label:'3:16 PM'},
 ]
 
 export default function App() {
   const [authed,setAuthed]=useState(false)
   const [tab,setTab]=useState('home')
 
-  useEffect(()=>{
-    const uid=localStorage.getItem('uid')
-    if(uid) setAuthed(true)
-  },[])
+  useEffect(()=>{ if(localStorage.getItem('uid')) setAuthed(true) },[])
 
   if(!authed) return <AuthScreen onAuth={()=>setAuthed(true)}/>
 
@@ -900,7 +824,6 @@ export default function App() {
       {tab==='settings'  &&<SettingsTab/>}
       {tab==='chat'      &&<ChatTab/>}
       {tab==='candle316' &&<Candle316Tab/>}
-
       <nav className="bottom-nav">
         {NAV.map(n=>(
           <div key={n.id} className={`nav-item ${tab===n.id?'active':''}`} onClick={()=>setTab(n.id)}>
