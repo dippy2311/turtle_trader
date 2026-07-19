@@ -205,24 +205,161 @@ function ScannerTab() {
       </div>
 
       {scanning&&!signals.length?(
-        <div style={{ textAlign:'center', padding:40, color:'var(--text-2)' }}>
+        <div style={{ padding:'32px 16px 40px' }}>
+          {/* ── Keyframe definitions ── */}
           <style>{`
-            @keyframes run { from{transform:translateX(-12px)} to{transform:translateX(12px)} }
-            @keyframes fade { 0%,100%{opacity:0.3} 50%{opacity:1} }
-            @keyframes scan-progress { 0%{width:5%} 50%{width:75%} 100%{width:92%} }
+            @keyframes bull-bob    { 0%,100%{transform:translateY(0)}   50%{transform:translateY(-5px)} }
+            @keyframes leg-a       { 0%,100%{transform:rotate(-30deg)}  50%{transform:rotate(24deg)}  }
+            @keyframes leg-b       { 0%,100%{transform:rotate(24deg)}   50%{transform:rotate(-30deg)} }
+            @keyframes leg-c       { 0%,100%{transform:rotate(-22deg)}  50%{transform:rotate(32deg)}  }
+            @keyframes leg-d       { 0%,100%{transform:rotate(32deg)}   50%{transform:rotate(-22deg)} }
+            @keyframes tail-w      { 0%,100%{transform:rotate(-18deg)}  50%{transform:rotate(20deg)}  }
+            @keyframes dust-a      { 0%{transform:translate(0,0) scale(1);opacity:.55} 100%{transform:translate(-20px,-12px) scale(2.2);opacity:0} }
+            @keyframes dust-b      { 0%{transform:translate(0,0) scale(1);opacity:.4}  100%{transform:translate(-28px,-4px)  scale(2.5);opacity:0} }
+            @keyframes dust-c      { 0%{transform:translate(0,0) scale(1);opacity:.35} 100%{transform:translate(-14px,-18px) scale(1.8);opacity:0} }
+            @keyframes label-fade  { 0%,100%{opacity:.3} 50%{opacity:1} }
           `}</style>
-          <div style={{ fontSize:72, animation:'run 0.5s infinite alternate', display:'inline-block', marginBottom:8 }}>🐂</div>
-          <div style={{ fontSize:20, fontWeight:700, color:'var(--buy)', marginBottom:6 }}>Scanning NIFTY 500...</div>
-          <div style={{ fontSize:13, color:'var(--text-3)', marginBottom:20 }}>Fetching live NSE data · Applying Turtle rules</div>
-          <div style={{ display:'flex', justifyContent:'center', flexWrap:'wrap', gap:6, marginBottom:20 }}>
+
+          {/* Heading */}
+          <div style={{ textAlign:'center', marginBottom:28 }}>
+            <div style={{ fontSize:21, fontWeight:700, color:'var(--buy)', letterSpacing:'-0.3px' }}>Scanning NIFTY 500...</div>
+            <div style={{ fontSize:13, color:'var(--text-3)', marginTop:5 }}>Fetching live NSE data · Applying Turtle rules</div>
+          </div>
+
+          {/* ── Bull + Track ── */}
+          <div style={{ position:'relative', margin:'0 auto', maxWidth:320, height:90 }}>
+
+            {/* Ground track */}
+            <div style={{ position:'absolute', bottom:12, left:0, right:0, height:3, background:'var(--border)', borderRadius:2 }}/>
+
+            {/* Progress fill on track */}
+            <div style={{ position:'absolute', bottom:12, left:0, height:3, width:`${progress}%`, background:'linear-gradient(90deg,var(--buy),var(--accent))', borderRadius:2, transition:'width 0.5s ease' }}/>
+
+            {/* Hoofmarks — small paired dots left behind on the track */}
+            {[10,18,26,34,42,50].map((behind,i)=>{
+              const xPct=Math.max(0,progress-behind)
+              return xPct>1?(
+                <React.Fragment key={i}>
+                  <div style={{ position:'absolute', bottom:16, left:`calc(${xPct}% - 3px)`, width:3, height:4, borderRadius:'50% 50% 0 0', background:'var(--buy)', opacity:0.1+(5-i)*0.07 }}/>
+                  <div style={{ position:'absolute', bottom:16, left:`calc(${xPct}% + 2px)`, width:3, height:4, borderRadius:'50% 50% 0 0', background:'var(--buy)', opacity:0.08+(5-i)*0.06 }}/>
+                </React.Fragment>
+              ):null
+            })}
+
+            {/* Bull wrapper — moves with progress */}
+            <div style={{
+              position:'absolute',
+              bottom:15,
+              left:`calc(${Math.min(progress,91)}% - 54px)`,
+              transition:'left 0.5s ease',
+              animation:'bull-bob 0.32s ease-in-out infinite',
+            }}>
+
+              {/* Dust cloud (sits behind bull, slightly left) */}
+              <svg style={{ position:'absolute', left:0, bottom:0, overflow:'visible', pointerEvents:'none' }} width="1" height="1">
+                <circle cx="6" cy="4"  r="3.5" fill="var(--text-3)" style={{ animation:'dust-a 0.95s ease-out infinite' }}/>
+                <circle cx="12" cy="8" r="2.5" fill="var(--text-3)" style={{ animation:'dust-b 0.95s 0.28s ease-out infinite' }}/>
+                <circle cx="2"  cy="1" r="2"   fill="var(--text-3)" style={{ animation:'dust-c 0.95s 0.55s ease-out infinite' }}/>
+              </svg>
+
+              {/*
+                ════════════════════════════════════════
+                NSE-STYLE CHARGING BULL  (90 × 62 viewBox)
+                Head lowered, charging right, full gallop
+                ════════════════════════════════════════
+              */}
+              <svg width="90" height="62" viewBox="0 0 90 62" fill="none">
+
+                {/* Ground shadow */}
+                <ellipse cx="43" cy="60" rx="26" ry="3" fill="black" opacity="0.1"/>
+
+                {/* ── BACK LEGS (behind body) ── */}
+                {/* Back-left (far side, slightly darker) */}
+                <g style={{ transformOrigin:'22px 37px', transformBox:'fill-box', animation:'leg-b 0.32s ease-in-out infinite' }}>
+                  <path d="M19 37 Q16 44 15 50 L19 52 L23 50 Q24 44 25 37 Z" fill="#1d7a1d"/>
+                </g>
+                {/* Back-right (near side) */}
+                <g style={{ transformOrigin:'28px 37px', transformBox:'fill-box', animation:'leg-a 0.32s ease-in-out infinite' }}>
+                  <path d="M25 37 Q22 44 21 50 L25 52 L30 50 Q31 44 32 37 Z" fill="var(--buy)"/>
+                </g>
+
+                {/* ── MAIN BODY ── */}
+                {/* Barrel / torso */}
+                <path d="M13 22 C17 12 31 9 44 11 C57 13 65 17 68 23 C72 30 70 38 63 39 C52 40 34 39 22 39 C13 39 9 34 11 27 Z" fill="var(--buy)"/>
+
+                {/* Shoulder / withers hump — gives the bull that powerful silhouette */}
+                <path d="M40 11 C43 5 51 4 54 8 C57 12 54 17 50 18 C44 19 38 16 40 12 Z" fill="var(--buy)"/>
+
+                {/* Underbelly muscle line */}
+                <path d="M22 39 C32 41 52 41 63 39" stroke="#1d7a1d" strokeWidth="1.2" fill="none" opacity="0.45"/>
+
+                {/* ── NECK ── */}
+                <path d="M64 20 C68 15 76 14 80 18 C78 23 71 26 67 25 Z" fill="var(--buy)"/>
+
+                {/* ── HEAD (lowered — charging stance) ── */}
+                <path d="M66 18 C70 12 79 11 84 16 C88 20 87 30 83 33 C79 37 71 36 68 30 C65 25 64 21 66 18 Z" fill="var(--buy)"/>
+
+                {/* Forehead crease */}
+                <path d="M70 13 C75 10 81 11 84 15" stroke="#1d7a1d" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.5"/>
+
+                {/* ── HORNS (golden, iconic) ── */}
+                {/* Upper horn — sweeps forward and up */}
+                <path d="M81 13 C84 9 88 7 90 9 C88 11 85 12 82 16" fill="#D4A017"/>
+                {/* Lower horn — shorter, angles forward */}
+                <path d="M84 17 C87 14 89 14 90 16 C88 17 86 17 84 18" fill="#D4A017"/>
+
+                {/* ── MUZZLE / NOSE ── */}
+                <ellipse cx="85" cy="27" rx="4.5" ry="4" fill="#155c15"/>
+                {/* Nostrils */}
+                <circle cx="83.5" cy="26" r="1.3" fill="#092909"/>
+                <circle cx="86"   cy="28" r="1.3" fill="#092909"/>
+                {/* Nose highlight */}
+                <ellipse cx="84" cy="24.5" rx="2" ry="1" fill="white" opacity="0.12"/>
+
+                {/* ── EYE ── */}
+                <circle cx="76" cy="19" r="2.8" fill="#092909"/>
+                <circle cx="76.8" cy="18.2" r="1" fill="white"/>
+                {/* Eyebrow ridge — shows intensity / anger */}
+                <path d="M73 16 C75 14 78 14 80 16" stroke="#1d7a1d" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.7"/>
+
+                {/* ── EAR ── */}
+                <path d="M73 15 L70 8 L77 13 Z" fill="#1d7a1d" opacity="0.88"/>
+
+                {/* ── FRONT LEGS (over body) ── */}
+                {/* Front-left (far side) */}
+                <g style={{ transformOrigin:'55px 39px', transformBox:'fill-box', animation:'leg-d 0.32s ease-in-out infinite' }}>
+                  <path d="M52 39 Q49 46 48 52 L52 54 L57 52 Q58 46 59 39 Z" fill="#1d7a1d"/>
+                </g>
+                {/* Front-right (near side, brightest) */}
+                <g style={{ transformOrigin:'62px 39px', transformBox:'fill-box', animation:'leg-c 0.32s ease-in-out infinite' }}>
+                  <path d="M58 39 Q55 46 55 52 L59 54 L64 52 Q65 46 65 39 Z" fill="var(--buy)"/>
+                </g>
+
+                {/* ── TAIL (swishing upward behind the run) ── */}
+                <g style={{ transformOrigin:'13px 27px', transformBox:'fill-box', animation:'tail-w 0.32s ease-in-out infinite' }}>
+                  <path d="M13 27 C7 20 3 14 6 8 C7 4 11 3 12 7" stroke="var(--buy)" strokeWidth="2.8" fill="none" strokeLinecap="round"/>
+                  <circle cx="12" cy="7" r="3.5" fill="#1d7a1d"/>
+                </g>
+
+              </svg>
+            </div>{/* end bull wrapper */}
+          </div>{/* end track container */}
+
+          {/* Progress % readout */}
+          <div style={{ textAlign:'center', marginTop:4, marginBottom:20 }}>
+            <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums', color:'var(--text-3)', letterSpacing:'0.5px' }}>
+              {progress}% complete
+            </span>
+          </div>
+
+          {/* Animated scanning labels */}
+          <div style={{ display:'flex', justifyContent:'center', flexWrap:'wrap', gap:6, marginBottom:14 }}>
             {['Fetching prices','Calculating EMAs','Checking breakouts','Scoring signals','Finding BUY signals'].map((s,i)=>(
-              <div key={s} style={{ fontSize:10, background:'var(--bg-elevated)', borderRadius:20, padding:'4px 10px', color:'var(--accent)', animation:`fade 1.8s ${i*0.35}s infinite` }}>{s}</div>
+              <div key={s} style={{ fontSize:10, background:'var(--bg-elevated)', borderRadius:20, padding:'4px 10px', color:'var(--accent)', animation:`label-fade 1.8s ${i*0.35}s infinite` }}>{s}</div>
             ))}
           </div>
-          <div style={{ background:'var(--bg-elevated)', borderRadius:8, height:8, overflow:'hidden', maxWidth:300, margin:'0 auto' }}>
-            <div style={{ height:'100%', background:'linear-gradient(90deg,var(--buy),var(--accent))', borderRadius:8, animation:'scan-progress 4s ease-in-out infinite' }}/>
-          </div>
-          <div style={{ fontSize:12, color:'var(--text-3)', marginTop:12 }}>First scan takes 60–90 seconds · Results cached for the day</div>
+
+          <div style={{ textAlign:'center', fontSize:12, color:'var(--text-3)' }}>First scan takes 60–90 seconds · Results cached for the day</div>
         </div>
       ):filtered.length===0?(
         <div style={{ textAlign:'center', padding:60, color:'var(--text-2)' }}>
