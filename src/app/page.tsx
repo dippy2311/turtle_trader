@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import type { ScanSignal, MarketStatus, Position } from '@/types'
 
 const fmt = (n: number) => {
@@ -239,10 +239,10 @@ function ScannerTab() {
             {[10,18,26,34,42,50].map((behind,i)=>{
               const xPct=Math.max(0,progress-behind)
               return xPct>1?(
-                <React.Fragment key={i}>
+                <Fragment key={i}>
                   <div style={{ position:'absolute', bottom:16, left:`calc(${xPct}% - 3px)`, width:3, height:4, borderRadius:'50% 50% 0 0', background:'var(--buy)', opacity:0.1+(5-i)*0.07 }}/>
                   <div style={{ position:'absolute', bottom:16, left:`calc(${xPct}% + 2px)`, width:3, height:4, borderRadius:'50% 50% 0 0', background:'var(--buy)', opacity:0.08+(5-i)*0.06 }}/>
-                </React.Fragment>
+                </Fragment>
               ):null
             })}
 
