@@ -1,4 +1,5 @@
 'use client'
+import BullScanner from '@/components/BullScanner'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { ScanSignal, MarketStatus, Position } from '@/types'
 
@@ -38,130 +39,6 @@ function Gauge({ score }: { score: number }) {
   )
 }
 
-function ChargingBull() {
-  return (
-    <svg width="100%" viewBox="0 0 680 360" role="img" xmlns="http://www.w3.org/2000/svg">
-      <title>Charging bull scanning animation</title>
-      <desc>Powerful charging bull scanning NSE stocks</desc>
-      <defs>
-        <style>{`
-          @keyframes bodyBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-          @keyframes legFL { 0%,100%{transform:rotate(-20deg)} 50%{transform:rotate(25deg)} }
-          @keyframes legFR { 0%,100%{transform:rotate(25deg)} 50%{transform:rotate(-20deg)} }
-          @keyframes legBL { 0%,100%{transform:rotate(15deg)} 50%{transform:rotate(-25deg)} }
-          @keyframes legBR { 0%,100%{transform:rotate(-25deg)} 50%{transform:rotate(15deg)} }
-          @keyframes tailWag { 0%,100%{transform:rotate(-10deg)} 50%{transform:rotate(30deg)} }
-          @keyframes eyeGlow { 0%,100%{opacity:0.7} 50%{opacity:1} }
-          @keyframes trailFade { 0%{opacity:0.6;transform:translateX(0) scaleX(1)} 100%{opacity:0;transform:translateX(-30px) scaleX(0.2)} }
-          @keyframes tp0 { 0%,100%{opacity:0.2} 50%{opacity:1} }
-          @keyframes tp1 { 0%,100%{opacity:0.2} 50%{opacity:1} }
-          @keyframes tp2 { 0%,100%{opacity:0.2} 50%{opacity:1} }
-          @keyframes tp3 { 0%,100%{opacity:0.2} 50%{opacity:1} }
-          .g-body { animation:bodyBob 0.55s ease-in-out infinite; transform-origin:350px 185px; }
-          .g-lfl  { animation:legFL 0.55s ease-in-out infinite; transform-origin:285px 228px; }
-          .g-lfr  { animation:legFR 0.55s ease-in-out infinite; transform-origin:307px 228px; }
-          .g-lbl  { animation:legBL 0.55s ease-in-out infinite; transform-origin:389px 228px; }
-          .g-lbr  { animation:legBR 0.55s ease-in-out infinite; transform-origin:411px 228px; }
-          .g-tail { animation:tailWag 0.55s ease-in-out infinite; transform-origin:438px 175px; }
-          .g-eye  { animation:eyeGlow 0.8s ease-in-out infinite; }
-          .tr1 { animation:trailFade 0.55s linear infinite 0s; }
-          .tr2 { animation:trailFade 0.55s linear infinite 0.18s; }
-          .tr3 { animation:trailFade 0.55s linear infinite 0.36s; }
-          .tg0 { animation:tp0 2s 0.0s infinite; }
-          .tg1 { animation:tp1 2s 0.4s infinite; }
-          .tg2 { animation:tp2 2s 0.8s infinite; }
-          .tg3 { animation:tp3 2s 1.2s infinite; }
-        `}</style>
-        <linearGradient id="pg" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#00C087"/>
-          <stop offset="100%" stopColor="#5B6CF9"/>
-        </linearGradient>
-      </defs>
-
-      <rect width="680" height="360" fill="#0A0A0F"/>
-      <line x1="80" y1="272" x2="600" y2="272" stroke="#1E1E2E" strokeWidth="1.5"/>
-      <ellipse cx="345" cy="274" rx="115" ry="7" fill="#00C087" opacity="0.07"/>
-
-      <ellipse className="tr1" cx="195" cy="198" rx="55" ry="14" fill="#00C087"/>
-      <ellipse className="tr2" cx="165" cy="198" rx="38" ry="10" fill="#00C087"/>
-      <ellipse className="tr3" cx="142" cy="198" rx="22" ry="6" fill="#00C087"/>
-
-      <g className="g-body">
-        <g className="g-tail">
-          <path fill="none" stroke="#00C087" strokeWidth="3" strokeLinecap="round" d="M438,178 Q458,162 462,143 Q466,124 455,112"/>
-          <ellipse cx="455" cy="110" rx="5" ry="7" fill="#00C087" opacity="0.8"/>
-        </g>
-        <ellipse cx="348" cy="192" rx="105" ry="65" fill="#111120" stroke="#00C087" strokeWidth="1.8"/>
-        <ellipse cx="268" cy="178" rx="52" ry="48" fill="#111120" stroke="#00C087" strokeWidth="1.5"/>
-        <ellipse cx="418" cy="188" rx="42" ry="45" fill="#111120" stroke="#00C087" strokeWidth="1.5"/>
-        <path fill="none" stroke="#00C087" strokeWidth="2.2" d="M238,148 Q270,132 320,138 Q360,142 400,145 Q430,148 448,162"/>
-        <path fill="none" stroke="#00C087" strokeWidth="1.2" opacity="0.5" d="M248,218 Q300,232 350,233 Q400,233 440,222"/>
-        <path fill="#111120" stroke="#00C087" strokeWidth="1.8" d="M248,218 Q232,208 222,192 Q210,172 215,148 Q220,130 235,122 Q250,114 268,118 Q284,122 292,138 Q298,152 295,170 Q292,188 280,200 Z"/>
-        <path fill="#111120" stroke="#00C087" strokeWidth="2" d="M168,148 Q172,118 192,108 Q212,98 232,102 Q252,106 258,122 Q264,138 256,155 Q248,168 230,172 Q210,174 192,165 Q174,156 168,148 Z"/>
-        <ellipse cx="175" cy="152" rx="22" ry="16" fill="#0d0d1a" stroke="#00C087" strokeWidth="1.5"/>
-        <ellipse cx="168" cy="154" rx="5" ry="4" fill="#00C087" opacity="0.6"/>
-        <ellipse cx="181" cy="154" rx="5" ry="4" fill="#00C087" opacity="0.6"/>
-        <g className="g-eye">
-          <circle cx="228" cy="118" r="9" fill="#00C087" opacity="0.25"/>
-          <circle cx="228" cy="118" r="6" fill="#00C087"/>
-          <circle cx="228" cy="118" r="3" fill="#0A0A0F"/>
-          <circle cx="230" cy="116" r="1.5" fill="#00C087" opacity="0.8"/>
-        </g>
-        <path fill="none" stroke="#00C087" strokeWidth="3" strokeLinecap="round" d="M215,103 Q205,78 198,58 Q194,44 202,36"/>
-        <path fill="none" stroke="#00C087" strokeWidth="4" strokeLinecap="round" d="M235,102 Q242,75 252,55 Q258,40 268,34"/>
-        <circle cx="202" cy="34" r="3" fill="#00C087" opacity="0.7"/>
-        <circle cx="270" cy="33" r="4" fill="#00C087" opacity="0.9"/>
-        <ellipse cx="248" cy="105" rx="10" ry="7" fill="#111120" stroke="#00C087" strokeWidth="1.5" transform="rotate(-25 248 105)"/>
-        <g className="g-lfl">
-          <rect x="278" y="228" width="14" height="52" rx="6" fill="#111120" stroke="#00C087" strokeWidth="1.8"/>
-          <ellipse cx="285" cy="282" rx="10" ry="6" fill="#00C087" opacity="0.8"/>
-          <ellipse cx="285" cy="250" rx="9" ry="7" fill="#111120" stroke="#00C087" strokeWidth="1.2"/>
-        </g>
-        <g className="g-lfr">
-          <rect x="300" y="228" width="14" height="52" rx="6" fill="#111120" stroke="#00C087" strokeWidth="1.8"/>
-          <ellipse cx="307" cy="282" rx="10" ry="6" fill="#00C087" opacity="0.8"/>
-          <ellipse cx="307" cy="250" rx="9" ry="7" fill="#111120" stroke="#00C087" strokeWidth="1.2"/>
-        </g>
-        <g className="g-lbl">
-          <rect x="382" y="228" width="14" height="52" rx="6" fill="#111120" stroke="#00C087" strokeWidth="1.8"/>
-          <ellipse cx="389" cy="282" rx="10" ry="6" fill="#00C087" opacity="0.8"/>
-          <ellipse cx="389" cy="248" rx="10" ry="8" fill="#111120" stroke="#00C087" strokeWidth="1.2"/>
-        </g>
-        <g className="g-lbr">
-          <rect x="404" y="228" width="14" height="52" rx="6" fill="#111120" stroke="#00C087" strokeWidth="1.8"/>
-          <ellipse cx="411" cy="282" rx="10" ry="6" fill="#00C087" opacity="0.8"/>
-          <ellipse cx="411" cy="248" rx="10" ry="8" fill="#111120" stroke="#00C087" strokeWidth="1.2"/>
-        </g>
-        <ellipse cx="195" cy="175" rx="16" ry="10" fill="#111120" stroke="#00C087" strokeWidth="1.2" opacity="0.8"/>
-      </g>
-
-      <text x="340" y="306" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="15" fontWeight="700" fill="#00C087" letterSpacing="4">SCANNING NIFTY 500</text>
-      <text x="340" y="324" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="11" fill="#8888AA">Fetching live NSE data · Applying Turtle Trading rules</text>
-
-      <rect x="200" y="333" width="280" height="6" rx="3" fill="#1E1E2E"/>
-      <rect x="200" y="333" height="6" rx="3" fill="url(#pg)">
-        <animate attributeName="width" values="15;250;15" dur="2.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
-      </rect>
-
-      <g className="tg0">
-        <rect x="30" y="60" width="108" height="24" rx="12" fill="#00C08718" stroke="#00C087" strokeWidth="1"/>
-        <text x="84" y="76" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="10" fontWeight="600" fill="#00C087">Fetching prices</text>
-      </g>
-      <g className="tg1">
-        <rect x="30" y="95" width="114" height="24" rx="12" fill="#5B6CF918" stroke="#5B6CF9" strokeWidth="1"/>
-        <text x="87" y="111" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="10" fontWeight="600" fill="#5B6CF9">Calculating EMAs</text>
-      </g>
-      <g className="tg2">
-        <rect x="540" y="60" width="112" height="24" rx="12" fill="#FFB30018" stroke="#FFB300" strokeWidth="1"/>
-        <text x="596" y="76" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="10" fontWeight="600" fill="#FFB300">Scoring signals</text>
-      </g>
-      <g className="tg3">
-        <rect x="530" y="95" width="122" height="24" rx="12" fill="#00C08718" stroke="#00C087" strokeWidth="1"/>
-        <text x="591" y="111" textAnchor="middle" fontFamily="-apple-system,sans-serif" fontSize="10" fontWeight="600" fill="#00C087">Finding BUY signals</text>
-      </g>
-    </svg>
-  )
-}
 
 // ── HOME ──────────────────────────────────────────────────────────────────────
 function HomeTab({ onNavigate }: { onNavigate:(tab:string)=>void }) {
@@ -313,7 +190,7 @@ function ScannerTab() {
 
       {scanning&&!signals.length?(
         <div style={{ padding:'0 0 20px' }}>
-          <ChargingBull/>
+          <BullScanner/>
         </div>
       ):filtered.length===0?(
         <div style={{ textAlign:'center', padding:60, color:'var(--text-2)' }}>
@@ -602,7 +479,8 @@ function Candle316Tab() {
         {data&&c316&&!loading&&(
           <>
             <div style={{ background:isGreen?'var(--buy-bg)':'var(--sell-bg)', border:`2px solid ${isGreen?'var(--buy)':'var(--sell)'}`, borderRadius:20, padding:24, textAlign:'center', marginBottom:14 }}>
-              <div style={{ fontSize:15, color:'var(--text-2)', marginBottom:8 }}>{data.symbol} · {c316.time} IST</div> <div style={{ fontSize:12, color:'var(--accent)', marginBottom:8 }}>{data.session_label}</div>
+              <div style={{ fontSize:15, color:'var(--text-2)', marginBottom:4 }}>{data.symbol} · 3:16 PM IST</div>
+              <div style={{ fontSize:12, color:'var(--accent)', marginBottom:8 }}>{data.session_label}</div>
               <div style={{ fontSize:88, lineHeight:1 }}>{isGreen?'🟢':'🔴'}</div>
               <div style={{ fontSize:30, fontWeight:800, color:isGreen?'var(--buy)':'var(--sell)', marginTop:10 }}>
                 {isGreen?'GREEN CANDLE':'RED CANDLE'}
