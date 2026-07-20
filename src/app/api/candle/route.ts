@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const maxDuration = 30
 
-// Returns the most recent trading session's 3:16 PM candle
-// Works on weekends, holidays, and after market hours
 export async function GET(req: NextRequest) {
   const symbol = req.nextUrl.searchParams.get('symbol')?.toUpperCase()
   if (!symbol) return NextResponse.json({ error: 'Symbol required' }, { status: 400 })
@@ -11,11 +9,12 @@ export async function GET(req: NextRequest) {
   const nseSymbol = symbol.endsWith('.NS') ? symbol : `${symbol}.NS`
 
   try {
-    // Fetch last 7 days of 5-min data to cover weekends + holidays
+    // Use 1-minute interval for EXACT 3:16 PM candle
+    // Fetch last 7 days to cover weekends + holidays
     const end = Math.floor(Date.now() / 1000)
     const start = end - 7 * 24 * 60 * 60
 
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${nseSymbol}?interval=5m&period1=${start}&period2=${end}&includePrePost=false`
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${nseSymbol}?interval=1m&period1=${start}&period2=${end}&includePrePost=false`
 
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -34,8 +33,8 @@ export async function GET(req: NextRequest) {
 
     if (!timestamps.length) throw new Error(`No trading data for ${symbol}`)
 
-    // Convert all bars to IST
     const IST_OFFSET = 5.5 * 3600
+
     const allBars = timestamps.map((ts, i) => {
       const istDate = new Date((ts + IST_OFFSET) * 1000)
       const dateStr = istDate.toISOString().slice(0, 10)
@@ -56,60 +55,45 @@ export async function GET(req: NextRequest) {
 
     if (!allBars.length) throw new Error(`No valid price data for ${symbol}`)
 
-    // Get all unique trading dates (sorted newest first)
+    // Get unique trading dates newest first
     const tradingDates = [...new Set(allBars.map(b => b.date))].sort().reverse()
 
-    // ── Find the most recent session that has reached 3:16 PM ──
-    // Check if market has crossed 3:16 PM today IST
+    // Check if market has passed 3:16 PM today IST
     const nowIST = new Date(Date.now() + IST_OFFSET * 1000)
     const nowTimeStr = `${String(nowIST.getUTCHours()).padStart(2,'0')}:${String(nowIST.getUTCMinutes()).padStart(2,'0')}`
     const todayIST = nowIST.toISOString().slice(0, 10)
-    const marketReached316Today = tradingDates[0] === todayIST && nowTimeStr >= '15:16'
 
-    // Pick the session to show:
-    // - If market has passed 3:16 PM today → use today
-    // - Otherwise → use the most recent previous trading session
-    let sessionDate: string
-    if (marketReached316Today) {
-      sessionDate = todayIST
-    } else {
-      // Use most recent session (could be today before 3:16, or last trading day)
-      // Find most recent session with bars after 15:10
-      sessionDate = tradingDates[0]
-      for (const d of tradingDates) {
-        const sessionBars = allBars.filter(b => b.date === d)
-        const has316 = sessionBars.some(b => b.time_ist >= '15:10')
-        if (has316) {
-          sessionDate = d
-          break
-        }
-      }
+    // Find most recent session that has a 3:16 PM bar
+    let sessionDate = tradingDates[0]
+    for (const d of tradingDates) {
+      const sessionBars = allBars.filter(b => b.date === d)
+      const has316 = sessionBars.some(b => b.time_ist >= '15:16')
+      if (has316) { sessionDate = d; break }
     }
 
-    // Get all bars for the selected session
     const sessionBars = allBars.filter(b => b.date === sessionDate)
-    if (!sessionBars.length) throw new Error(`No data for trading session ${sessionDate}`)
+    if (!sessionBars.length) throw new Error(`No session data for ${symbol}`)
 
-    // ── 3:16 PM candle — find closest bar to 15:16 ──
-    const bar316 = sessionBars.find(b => b.time_ist >= '15:15' && b.time_ist <= '15:20')
-      ?? sessionBars.find(b => b.time_ist >= '15:10' && b.time_ist <= '15:25')
-      ?? sessionBars.find(b => b.time_ist >= '15:00' && b.time_ist <= '15:30')
-      ?? sessionBars[sessionBars.length - 1]  // fallback to last bar of session
+    // EXACT 3:16 PM bar — 1 minute precision
+    const bar316 = sessionBars.find(b => b.time_ist === '15:16')
+      ?? sessionBars.find(b => b.time_ist === '15:17')
+      ?? sessionBars.find(b => b.time_ist === '15:15')
+      ?? sessionBars.find(b => b.time_ist >= '15:14' && b.time_ist <= '15:19')
+      ?? sessionBars[sessionBars.length - 1]
 
-    // ── Day candle (full session) ──
+    // Full day candle
     const dayOpen  = sessionBars[0]
     const dayClose = sessionBars[sessionBars.length - 1]
     const dayHigh  = Math.max(...sessionBars.map(b => b.high))
     const dayLow   = Math.min(...sessionBars.map(b => b.low))
 
-    // ── Previous session for gap calculation ──
+    // Previous session for gap
     const prevSessionDate = tradingDates.find(d => d !== sessionDate)
     const prevSessionBars = prevSessionDate ? allBars.filter(b => b.date === prevSessionDate) : []
     const prevClose = prevSessionBars.length
       ? prevSessionBars[prevSessionBars.length - 1].close
-      : (meta.chartPreviousClose ?? meta.previousClose ?? 0)
+      : Number((meta.chartPreviousClose ?? meta.previousClose ?? 0).toFixed(2))
 
-    // ── Calculate candle details ──
     const c316Change    = Number((bar316.close - bar316.open).toFixed(2))
     const c316ChangePct = Number(((bar316.close - bar316.open) / bar316.open * 100).toFixed(2))
     const dayChange     = Number((dayClose.close - dayOpen.open).toFixed(2))
@@ -117,12 +101,10 @@ export async function GET(req: NextRequest) {
     const gap           = prevClose ? Number((dayOpen.open - prevClose).toFixed(2)) : 0
     const gapPct        = prevClose ? Number((gap / prevClose * 100).toFixed(2)) : 0
 
-    // ── Is this today's session or a previous session? ──
     const isCurrentSession = sessionDate === todayIST
-    const isWeekend = [0, 6].includes(new Date().getDay()) // 0=Sun, 6=Sat
     const sessionLabel = isCurrentSession
-      ? (nowTimeStr < '09:15' ? 'Pre-market' : nowTimeStr < '15:30' ? 'Live session' : "Today's session")
-      : `Last session (${formatDisplayDate(sessionDate)})`
+      ? (nowTimeStr < '15:16' ? 'Live session (3:16 PM not reached yet)' : "Today's session · 3:16 PM")
+      : `Last trading session · ${formatDisplayDate(sessionDate)}`
 
     return NextResponse.json({
       symbol: symbol.replace('.NS', ''),
@@ -134,7 +116,7 @@ export async function GET(req: NextRequest) {
       gap_pct: gapPct,
 
       candle_316: {
-        time: bar316.time_ist,
+        time: bar316.time_ist,          // exact minute e.g. 15:16
         open:   bar316.open,
         high:   bar316.high,
         low:    bar316.low,
