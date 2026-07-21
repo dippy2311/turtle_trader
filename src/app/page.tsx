@@ -410,8 +410,260 @@ function SettingsTab() {
   )
 }
 
+
+// ── CANDLES TAB (wrapper with subpages) ──────────────────────────────────────
+function CandlesTab() {
+  const [subpage, setSubpage] = useState<'316'|'15m'>('316')
+
+  return (
+    <div style={{ paddingBottom: 100 }}>
+      {/* Subpage header */}
+      <div style={{ padding: '56px 16px 0', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>🕯️ Candles</div>
+        <div style={{ display: 'flex', gap: 0 }}>
+          <button onClick={() => setSubpage('316')} style={{
+            flex: 1, padding: '10px 0', fontSize: 14, fontWeight: 700,
+            background: 'none', border: 'none', cursor: 'pointer',
+            borderBottom: subpage === '316' ? '2px solid var(--buy)' : '2px solid transparent',
+            color: subpage === '316' ? 'var(--buy)' : 'var(--text-3)',
+          }}>3:16 PM</button>
+          <button onClick={() => setSubpage('15m')} style={{
+            flex: 1, padding: '10px 0', fontSize: 14, fontWeight: 700,
+            background: 'none', border: 'none', cursor: 'pointer',
+            borderBottom: subpage === '15m' ? '2px solid var(--accent)' : '2px solid transparent',
+            color: subpage === '15m' ? 'var(--accent)' : 'var(--text-3)',
+          }}>15 Min</button>
+        </div>
+      </div>
+
+      {subpage === '316' && <Candle316Content/>}
+      {subpage === '15m' && <Candle15mContent/>}
+    </div>
+  )
+}
+
+// ── 15 MIN CANDLE CONTENT ─────────────────────────────────────────────────────
+function Candle15mContent() {
+  const [symbol, setSymbol] = useState('INFY')
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [lastRefresh, setLastRefresh] = useState('')
+
+  const fetch15m = async (sym?: string) => {
+    const s = (sym ?? symbol).trim().toUpperCase()
+    if (!s) return
+    setLoading(true); setError('')
+    try {
+      const res = await fetch(`/api/candles15m?symbol=${s}`)
+      const json = await res.json()
+      if (json.error) throw new Error(json.error)
+      setData(json)
+      setLastRefresh(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+    } catch(e: any) { setError(e.message) }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetch15m('INFY') }, [])
+
+  const curr = data?.current_candle
+  const isGreen = curr?.color === 'GREEN'
+
+  return (
+    <div style={{ padding: 16 }}>
+
+      {/* Symbol input */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+        <input value={symbol} onChange={e => setSymbol(e.target.value.toUpperCase())}
+          onKeyDown={e => e.key === 'Enter' && fetch15m()}
+          placeholder="NSE symbol e.g. INFY"
+          style={{ flex: 1, textTransform: 'uppercase', fontWeight: 600 }}/>
+        <button className="btn btn-outline" style={{ padding: '0 16px', minWidth: 52 }}
+          onClick={() => fetch15m()} disabled={loading}>
+          {loading ? '⏳' : '↺'}
+        </button>
+      </div>
+
+      {/* Quick picks */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        {['INFY','RELIANCE','TCS','HDFCBANK','SBIN','TATAMOTORS'].map(s => (
+          <button key={s} onClick={() => { setSymbol(s); fetch15m(s) }}
+            style={{ background: symbol === s ? 'var(--accent-bg)' : 'var(--bg-elevated)',
+              border: `1px solid ${symbol === s ? 'var(--accent)' : 'var(--border)'}`,
+              borderRadius: 20, padding: '5px 14px', fontSize: 12,
+              color: symbol === s ? 'var(--accent)' : 'var(--text-2)',
+              cursor: 'pointer', fontWeight: 600 }}>{s}</button>
+        ))}
+      </div>
+
+      {error && (
+        <div style={{ background: 'var(--sell-bg)', border: '1px solid var(--sell)', borderRadius: 12, padding: 14, color: 'var(--sell)', fontSize: 14, marginBottom: 16 }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      {loading && !data && (
+        <div style={{ textAlign: 'center', padding: 40 }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🕯️</div>
+          <div style={{ color: 'var(--text-2)' }}>Fetching 15-min candles...</div>
+        </div>
+      )}
+
+      {data && !loading && (
+        <>
+          {/* Status bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: data.is_market_open ? 'var(--buy)' : 'var(--sell)' }}/>
+              <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{data.is_market_open ? 'Market Open' : 'Market Closed'}</span>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Last refresh: {lastRefresh}</span>
+          </div>
+
+          {/* Day info */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+            {[
+              ['Day Open', `₹${data.day_open}`, 'var(--accent)'],
+              ['Prev Close', `₹${data.prev_close}`, null],
+              ['Gap', `${data.gap_pct >= 0 ? '+' : ''}${data.gap_pct}%`, data.gap_pct >= 0 ? 'var(--buy)' : 'var(--sell)'],
+            ].map(([l,v,c]) => (
+              <div key={l as string} style={{ background: 'var(--bg-elevated)', borderRadius: 10, padding: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{l}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: (c as string) ?? 'var(--text)', marginTop: 2 }}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Current 15-min candle */}
+          {curr && (
+            <div style={{
+              background: isGreen ? 'var(--buy-bg)' : 'var(--sell-bg)',
+              border: `2px solid ${isGreen ? 'var(--buy)' : 'var(--sell)'}`,
+              borderRadius: 20, padding: 20, textAlign: 'center', marginBottom: 14,
+            }}>
+              <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 6 }}>
+                Current 15-min Candle · {curr.time_ist} IST
+              </div>
+              <div style={{ fontSize: 64, lineHeight: 1 }}>{isGreen ? '🟢' : '🔴'}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: isGreen ? 'var(--buy)' : 'var(--sell)', marginTop: 8 }}>
+                {isGreen ? 'GREEN' : 'RED'} CANDLE
+              </div>
+              <div style={{ fontSize: 30, fontWeight: 700, marginTop: 6 }}>₹{curr.close}</div>
+              <div style={{ fontSize: 15, color: isGreen ? 'var(--buy)' : 'var(--sell)', marginTop: 4 }}>
+                {curr.change >= 0 ? '+' : ''}₹{curr.change} ({curr.change_pct >= 0 ? '+' : ''}{curr.change_pct}%)
+              </div>
+
+              {/* Alert inside current candle */}
+              {curr.alert && (
+                <div style={{
+                  marginTop: 14, padding: '10px 16px',
+                  background: curr.alert.type === 'BUY' ? 'var(--buy-bg)' : 'var(--sell-bg)',
+                  border: `1px solid ${curr.alert.type === 'BUY' ? 'var(--buy)' : 'var(--sell)'}`,
+                  borderRadius: 12, fontSize: 13, fontWeight: 600,
+                  color: curr.alert.type === 'BUY' ? 'var(--buy)' : 'var(--sell)',
+                }}>
+                  {curr.alert.message}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Current candle OHLC */}
+          {curr && (
+            <div className="card" style={{ marginBottom: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 12 }}>Current Candle OHLC</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {[
+                  ['Open',   `₹${curr.open}`,   null],
+                  ['Close',  `₹${curr.close}`,  isGreen ? 'var(--buy)' : 'var(--sell)'],
+                  ['High',   `₹${curr.high}`,   'var(--buy)'],
+                  ['Low',    `₹${curr.low}`,    'var(--sell)'],
+                  ['Volume', curr.volume.toLocaleString('en-IN'), null],
+                  ['Body',   `₹${Math.abs(curr.change).toFixed(2)}`, null],
+                ].map(([l,v,c]) => (
+                  <div key={l as string} style={{ background: 'var(--bg-elevated)', borderRadius: 10, padding: 12 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{l}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: (c as string) ?? 'var(--text)', marginTop: 2 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* All alerts today */}
+          {data.alerts?.length > 0 && (
+            <div className="card" style={{ marginBottom: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 12 }}>🔔 Alerts Today</div>
+              {data.alerts.map((a: any, i: number) => (
+                <div key={i} style={{
+                  padding: '10px 14px', borderRadius: 10, marginBottom: 8,
+                  background: a.alert.type === 'BUY' ? 'var(--buy-bg)' : 'var(--sell-bg)',
+                  border: `1px solid ${a.alert.type === 'BUY' ? 'var(--buy)' : 'var(--sell)'}`,
+                }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4 }}>{a.time_ist} IST</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: a.alert.type === 'BUY' ? 'var(--buy)' : 'var(--sell)' }}>
+                    {a.alert.message}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* All 15-min candles table */}
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div style={{ fontWeight: 700, marginBottom: 12 }}>All 15-Min Candles · {data.session_date}</div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    {['Time','O','H','L','C','Color','Alert'].map(h => (
+                      <th key={h} style={{ padding: '6px 8px', color: 'var(--text-3)', fontWeight: 600, textAlign: 'left' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...data.candles].reverse().map((c: any, i: number) => (
+                    <tr key={i} style={{
+                      borderBottom: '1px solid var(--border)',
+                      background: c.is_current ? 'var(--bg-elevated)' : 'transparent',
+                    }}>
+                      <td style={{ padding: '7px 8px', fontWeight: c.is_current ? 700 : 400, color: c.is_current ? 'var(--accent)' : 'var(--text-2)' }}>
+                        {c.time_ist}{c.is_current ? ' ●' : ''}
+                      </td>
+                      <td style={{ padding: '7px 8px' }}>₹{c.open}</td>
+                      <td style={{ padding: '7px 8px', color: 'var(--buy)' }}>₹{c.high}</td>
+                      <td style={{ padding: '7px 8px', color: 'var(--sell)' }}>₹{c.low}</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 600, color: c.color === 'GREEN' ? 'var(--buy)' : 'var(--sell)' }}>₹{c.close}</td>
+                      <td style={{ padding: '7px 8px' }}>
+                        <span style={{ fontSize: 14 }}>{c.color === 'GREEN' ? '🟢' : '🔴'}</span>
+                      </td>
+                      <td style={{ padding: '7px 8px' }}>
+                        {c.alert && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                            background: c.alert.type === 'BUY' ? 'var(--buy-bg)' : 'var(--sell-bg)',
+                            color: c.alert.type === 'BUY' ? 'var(--buy)' : 'var(--sell)',
+                          }}>{c.alert.type}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <button className="btn btn-outline btn-full" onClick={() => fetch15m()} disabled={loading}>
+            {loading ? '⏳ Refreshing...' : '↺ Refresh Candles'}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── 3:16 PM ───────────────────────────────────────────────────────────────────
-function Candle316Tab() {
+function Candle316Content() {
   const [symbol,setSymbol]=useState('')
   const [data,setData]=useState<any>(null)
   const [loading,setLoading]=useState(false)
@@ -682,7 +934,7 @@ const NAV=[
   {id:'portfolio', icon:'📊', label:'Portfolio'},
   {id:'watchlist', icon:'👁', label:'Watchlist'},
   {id:'settings',  icon:'⚙️', label:'Settings'},
-  {id:'candle316', icon:'🕯️', label:'3:16 PM'},
+  {id:'candles',   icon:'🕯️', label:'Candles'},
 ]
 
 export default function App() {
@@ -701,7 +953,7 @@ export default function App() {
       {tab==='watchlist' &&<WatchlistTab/>}
       {tab==='settings'  &&<SettingsTab/>}
       {tab==='chat'      &&<ChatTab/>}
-      {tab==='candle316' &&<Candle316Tab/>}
+      {tab==='candles'   &&<CandlesTab/>}
       <nav className="bottom-nav">
         {NAV.map(n=>(
           <div key={n.id} className={`nav-item ${tab===n.id?'active':''}`} onClick={()=>setTab(n.id)}>
