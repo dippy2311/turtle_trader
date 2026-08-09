@@ -13,7 +13,8 @@ const pct = (n: number) => `${n>=0?'+':''}${n.toFixed(2)}%`
 const sigColor = (s: string) => s==='BUY'?'var(--buy)':s==='SELL'?'var(--sell)':s==='WATCH'?'var(--watch)':'var(--hold)'
 
 function Badge({ signal }: { signal: string }) {
-  return <span className={`badge badge-${signal}`}>{signal}</span>
+  const cls = signal === 'STRONG BUY' ? 'badge-BUY' : `badge-${signal}`
+  return <span className={`badge ${cls}`}>{signal}</span>
 }
 
 function Gauge({ score }: { score: number }) {
@@ -124,7 +125,7 @@ function HomeTab({ onNavigate }: { onNavigate:(tab:string)=>void }) {
             <div className="section-label" style={{ marginBottom:0 }}>🟢 Top Buy Signals</div>
             <span style={{ fontSize:13, color:'var(--accent)', cursor:'pointer' }} onClick={()=>onNavigate('scanner')}>See all →</span>
           </div>
-          {scan.signals.filter((s:any)=>s.signal==='BUY').slice(0,3).map((sig:ScanSignal)=>(
+          {scan.signals.filter((s:any)=>s.signal==='BUY'||s.signal==='STRONG BUY').slice(0,3).map((sig:ScanSignal)=>(
             <a key={sig.symbol} href={`/stock/${sig.symbol}`}>
               <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 0', borderTop:'1px solid var(--border)' }}>
                 <div style={{ flex:1 }}>
@@ -166,7 +167,7 @@ function ScannerTab() {
 
   useEffect(()=>{ if(!signals.length) runScan() },[])
 
-  const filtered=signals.filter(s=>s.signal===tab).sort((a,b)=>b.ai_score-a.ai_score)
+  const filtered=signals.filter(s=>tab==='BUY'?(s.signal==='BUY'||s.signal==='STRONG BUY'):s.signal===tab).sort((a,b)=>b.ai_score-a.ai_score)
 
   return (
     <div className="page">
