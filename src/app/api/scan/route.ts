@@ -21,13 +21,13 @@ export async function GET(req: NextRequest) {
       .order('ai_score', { ascending: false })
 
     if (cached && cached.length > 10) {
-      const counts = { BUY: 0, SELL: 0, WATCH: 0, HOLD: 0 }
-      cached.forEach(r => { counts[r.signal as keyof typeof counts]++ })
+      const counts: Record<string, number> = { BUY: 0, 'STRONG BUY': 0, SELL: 0, WATCH: 0, HOLD: 0 }
+      cached.forEach(r => { if (counts[r.signal] !== undefined) counts[r.signal]++; else counts[r.signal] = 1 })
       return NextResponse.json({
         scan_date: today, cached: true,
         total_scanned: cached.length,
         market_trend: cached[0]?.market_trend ?? 'SIDEWAYS',
-        counts, signals: cached,
+        counts: counts as any, signals: cached,
       })
     }
   }
@@ -88,15 +88,15 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const counts = { BUY: 0, SELL: 0, WATCH: 0, HOLD: 0 }
-  results.forEach(r => { counts[r.signal as keyof typeof counts]++ })
+  const counts: Record<string, number> = { BUY: 0, 'STRONG BUY': 0, SELL: 0, WATCH: 0, HOLD: 0 }
+  results.forEach(r => { if (counts[r.signal] !== undefined) counts[r.signal]++; else counts[r.signal] = 1 })
 
   return NextResponse.json({
     scan_date: today,
     cached: false,
     market_trend: marketTrend,
     total_scanned: results.length,
-    counts,
+    counts: counts as any,
     signals: results,
   })
 }
