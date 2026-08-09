@@ -1,4 +1,4 @@
-export type SignalType = 'BUY' | 'SELL' | 'WATCH' | 'HOLD'
+export type SignalType = 'BUY' | 'STRONG BUY' | 'SELL' | 'WATCH' | 'HOLD'
 export type MarketTrend = 'BULLISH' | 'BEARISH' | 'SIDEWAYS'
 
 export interface ScanSignal {
@@ -69,7 +69,7 @@ export interface ScanResult {
   market_trend: MarketTrend
   total_scanned: number
   signals: ScanSignal[]
-  counts: { BUY: number; SELL: number; WATCH: number; HOLD: number }
+  counts: { BUY: number; 'STRONG BUY': number; SELL: number; WATCH: number; HOLD: number }
 }
 
 export interface PositionSizeResult {
