@@ -12,8 +12,22 @@ export async function GET(req: NextRequest) {
   const forceRescan = req.nextUrl.searchParams.get('force') === '1'
   const db = supabaseAdmin()
 
-  // Return cached results if already scanned today
-  if (!forceRescan && batch === 0) {
+  // ── Smart cache logic ────────────────────────────────────────────────────────
+  // During market hours (9:15–15:30 IST) → always fresh on user request
+  // Post market → cache for the day (no point rescanning)
+  // forceRescan=1 → always bypass cache
+
+  const nowUTC = new Date()
+  const istMinutes = (nowUTC.getUTCHours() * 60 + nowUTC.getUTCMinutes() + 330) % (24 * 60)
+  const marketOpen  = 9  * 60 + 15   // 9:15 AM IST
+  const marketClose = 15 * 60 + 30   // 3:30 PM IST
+  const isWeekday   = nowUTC.getUTCDay() >= 1 && nowUTC.getUTCDay() <= 5
+  const isMarketHours = isWeekday && istMinutes >= marketOpen && istMinutes <= marketClose
+
+  // Use cache only if: NOT force rescan AND NOT market hours AND already have today's data
+  const useCache = !forceRescan && !isMarketHours && batch === 0
+
+  if (useCache) {
     const { data: cached } = await db
       .from('scan_results')
       .select('*')
@@ -24,10 +38,13 @@ export async function GET(req: NextRequest) {
       const counts: Record<string, number> = { BUY: 0, 'STRONG BUY': 0, SELL: 0, WATCH: 0, HOLD: 0 }
       cached.forEach(r => { if (counts[r.signal] !== undefined) counts[r.signal]++; else counts[r.signal] = 1 })
       return NextResponse.json({
-        scan_date: today, cached: true,
+        scan_date: today,
+        cached: true,
+        is_market_hours: false,
         total_scanned: cached.length,
         market_trend: cached[0]?.market_trend ?? 'SIDEWAYS',
-        counts: counts as any, signals: cached,
+        counts: counts as any,
+        signals: cached,
       })
     }
   }
@@ -94,6 +111,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     scan_date: today,
     cached: false,
+    is_market_hours: isMarketHours,
     market_trend: marketTrend,
     total_scanned: results.length,
     counts: counts as any,
