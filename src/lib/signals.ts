@@ -125,7 +125,7 @@ export function evaluate(
   sectorStrength = 50,
   hasPosition = false,
 ): SignalResult {
-  if (bars.length < 210) return _insufficientData(bars)
+  if (bars.length < 60) return _insufficientData(bars)
 
   const closes  = bars.map(b => b.close)
   const highs   = bars.map(b => b.high)
@@ -133,29 +133,38 @@ export function evaluate(
   const volumes = bars.map(b => b.volume)
   const n = bars.length
 
-  // ── Indicators ──────────────────────────────────────────────────────────────
-  const ema20  = ema(closes, 20)
-  const ema50  = ema(closes, 50)
-  const ema200 = ema(closes, 200)
-  const atrArr = atr(highs, lows, closes, 14)
-  const adxVal = adx(highs, lows, closes, 14)
-  const rsiArr = rsi(closes, 14)
-
+  // ── Indicators — adaptive based on available data ──────────────────────────
   const last = n - 1
-  const close   = closes[last]
-  const e20     = ema20[last]
-  const e50     = ema50[last]
-  const e200    = ema200[last]
-  const atrVal  = atrArr[last]
-  const rsiVal  = rsiArr[last]
 
-  // Volume ratio vs 20-day average
-  const avg20Vol = volumes.slice(last - 19, last + 1).reduce((a, b) => a + b, 0) / 20
+  // Adaptive EMA periods based on available bars
+  const ema20Period  = Math.min(20, n - 1)
+  const ema50Period  = Math.min(50, n - 1)
+  const ema200Period = Math.min(200, n - 1)
+
+  const ema20Arr  = ema(closes, ema20Period)
+  const ema50Arr  = ema(closes, ema50Period)
+  const ema200Arr = ema(closes, ema200Period)
+  const atrArr    = atr(highs, lows, closes, 14)
+  const adxVal    = adx(highs, lows, closes, 14)
+  const rsiArr    = rsi(closes, 14)
+
+  const close   = closes[last]
+  const e20     = ema20Arr[last]  ?? closes[last]
+  const e50     = ema50Arr[last]  ?? closes[last]
+  const e200    = ema200Arr[last] ?? (n >= 50 ? ema50Arr[last] ?? closes[last] : closes[last])
+  const atrVal  = atrArr[last]    ?? Math.abs(closes[last] - closes[last - 1])
+  const rsiVal  = rsiArr[last]    ?? 50
+
+  // Volume ratio vs 20-day average (use available bars if less than 20)
+  const volPeriod = Math.min(20, n)
+  const avg20Vol = volumes.slice(last - volPeriod + 1, last + 1).reduce((a, b) => a + b, 0) / volPeriod
   const volRatio = avg20Vol > 0 ? volumes[last] / avg20Vol : 1
 
-  // Breakout levels (using prior bars to avoid lookahead)
-  const high55 = Math.max(...highs.slice(Math.max(0, last - 56), last))
-  const low20  = Math.min(...lows.slice(Math.max(0, last - 21), last))
+  // Breakout levels — adaptive periods
+  const breakoutPeriod = Math.min(55, n - 1)
+  const exitPeriod     = Math.min(20, n - 1)
+  const high55 = Math.max(...highs.slice(Math.max(0, last - breakoutPeriod), last))
+  const low20  = Math.min(...lows.slice(Math.max(0, last - exitPeriod), last))
 
   // Swing low = lowest low of last 10 bars (for stop loss)
   const swingLow = Math.min(...lows.slice(Math.max(0, last - 10), last + 1))
@@ -376,7 +385,7 @@ function _insufficientData(bars: OHLCV[]): SignalResult {
     stop_loss: 0,
     atr_val: 0,
     breakout_level: 0,
-    reasons: ['Insufficient historical data (need 210+ days)'],
+    reasons: ['Insufficient historical data (need 60+ trading days)'],
     scores: { trend: 0, momentum: 0, volume: 0, sector: 0, risk: 0, market: 0 },
   }
 }
