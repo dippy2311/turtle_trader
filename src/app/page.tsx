@@ -10,7 +10,7 @@ const fmt = (n: number) => {
   return `₹${n.toFixed(2)}`
 }
 const pct = (n: number) => `${n>=0?'+':''}${n.toFixed(2)}%`
-const sigColor = (s: string) => s==='BUY'?'var(--buy)':s==='SELL'?'var(--sell)':s==='WATCH'?'var(--watch)':'var(--hold)'
+const sigColor = (s: string) => s==='BUY'||s==='STRONG BUY'?'var(--buy)':s==='SELL'?'var(--sell)':s==='WATCH'?'var(--watch)':'var(--hold)'
 
 function Badge({ signal }: { signal: string }) {
   const cls = signal === 'STRONG BUY' ? 'badge-BUY' : `badge-${signal}`
@@ -150,9 +150,9 @@ function HomeTab({ onNavigate }: { onNavigate:(tab:string)=>void }) {
 function ScannerTab() {
   const [signals,setSignals]=useState<ScanSignal[]>([])
   const [counts,setCounts]=useState({BUY:0,SELL:0,WATCH:0,HOLD:0})
-  const [tab,setTab]=useState<'BUY'|'SELL'|'WATCH'>('BUY')
+  const [tab,setTab]=useState<'BUY'|'SELL'|'WATCH'|'HOLD'>('BUY')
   const [scanning,setScanning]=useState(false)
-  const [meta,setMeta]=useState<any>({})
+  const [meta,setMeta]=useState<any>({is_market_hours:false})
 
   const runScan=useCallback(async(force=false)=>{
     setScanning(true)
@@ -161,33 +161,62 @@ function ScannerTab() {
       const data=await res.json()
       setSignals(data.signals??[])
       setCounts(data.counts??{BUY:0,SELL:0,WATCH:0,HOLD:0})
-      setMeta({scan_date:data.scan_date,total_scanned:data.total_scanned,cached:data.cached})
+      setMeta({scan_date:data.scan_date,total_scanned:data.total_scanned,cached:data.cached,is_market_hours:data.is_market_hours})
     } finally { setScanning(false) }
   },[])
 
   useEffect(()=>{ if(!signals.length) runScan() },[])
 
-  const filtered=signals.filter(s=>tab==='BUY'?(s.signal==='BUY'||s.signal==='STRONG BUY'):s.signal===tab).sort((a,b)=>b.ai_score-a.ai_score)
+  const filtered=signals.filter(s=>tab==='BUY'?(s.signal==='BUY'||s.signal==='STRONG BUY'):s.signal===tab).sort((a,b)=>(b.ai_score??0)-(a.ai_score??0))
 
   return (
     <div className="page">
       <div className="page-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
         <div>
           <div className="page-title">Scanner</div>
-          <div className="page-subtitle">{meta.total_scanned??0} stocks · {meta.scan_date??'today'}{meta.cached?' · cached':''}</div>
+          <div className="page-subtitle">{meta.total_scanned??0} stocks · {meta.scan_date??'today'}{meta.cached?' · cached':''}{meta.is_market_hours?' · 🟢 Live':' · 🔴 Closed'}</div>
         </div>
         <button className="btn btn-outline" style={{ fontSize:13, padding:'8px 14px' }} onClick={()=>runScan(true)} disabled={scanning}>
-          {scanning?'⏳':'↺ Scan'}
+          {scanning?'⏳':meta.is_market_hours?'🟢 Scan Live':'↺ Scan'}
         </button>
       </div>
 
       <div className="tab-bar">
-        {(['BUY','SELL','WATCH'] as const).map(t=>(
-          <div key={t} className={`tab ${tab===t?`active-${t.toLowerCase()}`:''}`} onClick={()=>setTab(t)}>
-            {t} <span style={{ fontWeight:400, fontSize:11 }}>({counts[t]})</span>
+        {(['BUY','SELL','WATCH','HOLD'] as const).map(t=>(
+          <div key={t} style={{
+            flex:1, padding:'10px 0', textAlign:'center', fontSize:13, fontWeight:600, cursor:'pointer',
+            color: tab===t ? (t==='BUY'?'var(--buy)':t==='SELL'?'var(--sell)':t==='WATCH'?'var(--watch)':'var(--text-2)') : 'var(--text-3)',
+            borderBottom: tab===t ? `2px solid ${t==='BUY'?'var(--buy)':t==='SELL'?'var(--sell)':t==='WATCH'?'var(--watch)':'var(--text-2)'}` : '2px solid transparent',
+          }} onClick={()=>setTab(t)}>
+            {t} <span style={{ fontWeight:400, fontSize:11 }}>({(counts as any)[t]??0})</span>
           </div>
         ))}
       </div>
+
+      {/* Bearish market warning banner */}
+      {!scanning&&signals.length>0&&counts.BUY===0&&(
+        <div style={{
+          margin:'0 0 12px',
+          background:'#FF475710',
+          border:'1px solid #FF4757',
+          borderRadius:12,
+          padding:'12px 14px',
+          display:'flex',
+          gap:10,
+          alignItems:'flex-start',
+        }}>
+          <span style={{ fontSize:20 }}>🛡️</span>
+          <div>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--sell)', marginBottom:3 }}>
+              Capital Protection Mode — Market is BEARISH
+            </div>
+            <div style={{ fontSize:12, color:'var(--text-2)', lineHeight:1.6 }}>
+              Nifty 50 EMA is below 200 EMA. No BUY signals generated.
+              This protects your capital. Check WATCH tab for stocks to monitor — they will turn BUY when the market recovers.
+            </div>
+          </div>
+        </div>
+      )}
 
       {scanning&&!signals.length?(
         <div style={{ padding:'0 0 20px' }}>
@@ -195,7 +224,7 @@ function ScannerTab() {
         </div>
       ):filtered.length===0?(
         <div style={{ textAlign:'center', padding:60, color:'var(--text-2)' }}>
-          <div style={{ fontSize:40 }}>{tab==='BUY'?'🟢':tab==='SELL'?'🔴':'🟡'}</div>
+          <div style={{ fontSize:40 }}>{tab==='BUY'?'🟢':tab==='SELL'?'🔴':tab==='WATCH'?'🟡':'⚪'}</div>
           <div style={{ marginTop:8, fontWeight:600 }}>No {tab} signals today</div>
           <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Tap ↺ Scan to refresh</div>
         </div>
