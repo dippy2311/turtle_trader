@@ -174,27 +174,34 @@ function ScannerTab() {
       <div className="page-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
         <div>
           <div className="page-title">Scanner</div>
-          <div className="page-subtitle">{meta.total_scanned??0} stocks · {meta.scan_date??'today'}{meta.cached?' · cached':''}{meta.is_market_hours?' · 🟢 Live':' · 🔴 Closed'}</div>
+          <div className="page-subtitle">{(counts.BUY??0)+(counts.SELL??0)+(counts.WATCH??0)+(counts.HOLD??0)} signals · {meta.scan_date??'today'}{meta.is_market_hours?' · 🟢 Live':' · 🔴 Closed'}</div>
         </div>
         <button className="btn btn-outline" style={{ fontSize:13, padding:'8px 14px' }} onClick={()=>runScan(true)} disabled={scanning}>
           {scanning?'⏳':meta.is_market_hours?'🟢 Scan Live':'↺ Scan'}
         </button>
       </div>
 
-      <div className="tab-bar">
-        {(['BUY','SELL','WATCH','HOLD'] as const).map(t=>(
-          <div key={t} style={{
-            flex:1, padding:'10px 0', textAlign:'center', fontSize:13, fontWeight:600, cursor:'pointer',
-            color: tab===t ? (t==='BUY'?'var(--buy)':t==='SELL'?'var(--sell)':t==='WATCH'?'var(--watch)':'var(--text-2)') : 'var(--text-3)',
-            borderBottom: tab===t ? `2px solid ${t==='BUY'?'var(--buy)':t==='SELL'?'var(--sell)':t==='WATCH'?'var(--watch)':'var(--text-2)'}` : '2px solid transparent',
-          }} onClick={()=>setTab(t)}>
-            {t} <span style={{ fontWeight:400, fontSize:11 }}>({(counts as any)[t]??0})</span>
-          </div>
-        ))}
+      <div style={{ display:"flex", gap:6, padding:"10px 0 14px", borderBottom:"none" }}>
+        {(['BUY','SELL','WATCH','HOLD'] as const).map(t=>{
+          const tabColor = t==='BUY'?'var(--buy)':t==='SELL'?'var(--sell)':t==='WATCH'?'var(--watch)':'var(--text-2)'
+          const isActive = tab===t
+          return (
+            <div key={t} onClick={()=>setTab(t)} style={{
+              flex:1, padding:'8px 4px', textAlign:'center', cursor:'pointer',
+              borderRadius:10,
+              background: isActive ? (t==='BUY'?'var(--buy-bg)':t==='SELL'?'var(--sell-bg)':t==='WATCH'?'var(--watch-bg)':'var(--bg-elevated)') : 'transparent',
+              border: isActive ? `1.5px solid ${tabColor}` : '1.5px solid transparent',
+              transition:'all 0.2s',
+            }}>
+              <div style={{ fontSize:12, fontWeight:700, color: isActive ? tabColor : 'var(--text-3)' }}>{t}</div>
+              <div style={{ fontSize:11, color: isActive ? tabColor : 'var(--text-3)', opacity:0.8 }}>{(counts as any)[t]??0}</div>
+            </div>
+          )
+        })}
       </div>
 
-      {/* Bearish market warning banner */}
-      {!scanning&&signals.length>0&&counts.BUY===0&&(
+      {/* Bearish market warning banner — BUY tab only */}
+      {tab==='BUY'&&!scanning&&signals.length>0&&(counts.BUY??0)===0&&(
         <div style={{
           margin:'0 0 12px',
           background:'#FF475710',
