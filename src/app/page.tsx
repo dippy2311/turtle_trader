@@ -157,11 +157,36 @@ function ScannerTab() {
   const runScan=useCallback(async(force=false)=>{
     setScanning(true)
     try {
-      const res=await fetch(`/api/scan${force?'?force=1':''}`)
-      const data=await res.json()
-      setSignals(data.signals??[])
-      setCounts(data.counts??{BUY:0,SELL:0,WATCH:0,HOLD:0})
-      setMeta({scan_date:data.scan_date,total_scanned:data.total_scanned,cached:data.cached,is_market_hours:data.is_market_hours})
+      // Batch 0 first — returns quickly with first 50 stocks + cached check
+      const res0=await fetch(`/api/scan${force?'?force=1':''}`)
+      const data0=await res0.json()
+
+      // If cached, use directly — no need to fetch more batches
+      if(data0.cached && !force){
+        setSignals(data0.signals??[])
+        setCounts(data0.counts??{BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0})
+        setMeta({scan_date:data0.scan_date,total_scanned:data0.total_scanned,cached:true,is_market_hours:data0.is_market_hours})
+        return
+      }
+
+      // Fresh scan — collect all signals from all batches
+      let allSignals=[...(data0.signals??[])]
+      const totalBatches=7 // 7 batches × 50 = 350 stocks
+
+      // Fetch remaining batches in parallel (2 at a time to avoid rate limits)
+      for(let b=1; b<totalBatches; b++){
+        try {
+          const res=await fetch(`/api/scan?batch=${b}${force?'&force=1':''}`)
+          const data=await res.json()
+          allSignals=[...allSignals,...(data.signals??[])]
+          // Update UI progressively as each batch comes in
+          const counts:{[k:string]:number}={BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0}
+          allSignals.forEach(s=>{ counts[s.signal]=(counts[s.signal]??0)+1 })
+          setSignals([...allSignals])
+          setCounts(counts as any)
+          setMeta({scan_date:data0.scan_date,total_scanned:allSignals.length,cached:false,is_market_hours:data0.is_market_hours})
+        } catch(e){ console.warn('Batch '+b+' failed:', e) }
+      }
     } finally { setScanning(false) }
   },[])
 
@@ -229,14 +254,32 @@ function ScannerTab() {
         <div style={{ padding:'0 0 20px' }}>
           <BullScanner/>
         </div>
-      ):filtered.length===0?(
-        <div style={{ textAlign:'center', padding:60, color:'var(--text-2)' }}>
-          <div style={{ fontSize:40 }}>{tab==='BUY'?'🟢':tab==='SELL'?'🔴':tab==='WATCH'?'🟡':'⚪'}</div>
-          <div style={{ marginTop:8, fontWeight:600 }}>No {tab} signals today</div>
-          <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Tap ↺ Scan to refresh</div>
-        </div>
       ):(
-        filtered.map((sig,i)=><SignalCard key={sig.symbol} sig={sig} rank={i+1}/>)
+        <div
+          style={{ touchAction:'pan-y' }}
+          onTouchStart={e=>{
+            const el=e.currentTarget as any
+            el._touchStartX=e.touches[0].clientX
+          }}
+          onTouchEnd={e=>{
+            const el=e.currentTarget as any
+            const dx=e.changedTouches[0].clientX-(el._touchStartX??0)
+            const TABS=['BUY','SELL','WATCH','HOLD'] as const
+            const idx=TABS.indexOf(tab as any)
+            if(dx < -50 && idx < TABS.length-1) setTab(TABS[idx+1])
+            if(dx > 50  && idx > 0)             setTab(TABS[idx-1])
+          }}
+        >
+          {filtered.length===0?(
+            <div style={{ textAlign:'center', padding:60, color:'var(--text-2)' }}>
+              <div style={{ fontSize:40 }}>{tab==='BUY'?'🟢':tab==='SELL'?'🔴':tab==='WATCH'?'🟡':'⚪'}</div>
+              <div style={{ marginTop:8, fontWeight:600 }}>No {tab} signals today</div>
+              <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Tap ↺ Scan to refresh</div>
+            </div>
+          ):(
+            filtered.map((sig,i)=><SignalCard key={sig.symbol} sig={sig} rank={i+1}/>)
+          )}
+        </div>
       )}
     </div>
   )
