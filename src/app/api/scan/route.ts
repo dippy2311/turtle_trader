@@ -64,11 +64,10 @@ export async function GET(req: NextRequest) {
     }
   } catch { /* use SIDEWAYS */ }
 
-  // Select batch of stocks
+  // Select batch of stocks — each batch = 50 stocks
   const BATCH_SIZE = 50
-  const stocks = batch === 0
-    ? STOCK_UNIVERSE.slice(0, 50)
-    : STOCK_UNIVERSE.slice(batch * BATCH_SIZE, (batch + 1) * BATCH_SIZE)
+  const stocks = STOCK_UNIVERSE.slice(batch * BATCH_SIZE, (batch + 1) * BATCH_SIZE)
+  if (!stocks.length) return NextResponse.json({ signals: [], counts: {}, total_scanned: 0, scan_date: today, cached: false, is_market_hours: isMarketHours })
 
   const results = []
   for (const stock of stocks) {
