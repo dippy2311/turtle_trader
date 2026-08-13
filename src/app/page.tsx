@@ -49,11 +49,27 @@ function HomeTab({ onNavigate }: { onNavigate:(tab:string)=>void }) {
   const [loading,setLoading]=useState(true)
 
   useEffect(()=>{
-    Promise.all([
-      fetch('/api/market').then(r=>r.json()),
-      fetch('/api/scan').then(r=>r.json()),
-      fetch('/api/portfolio',{headers:{'x-user-id':localStorage.getItem('uid')??''}}).then(r=>r.json()),
-    ]).then(([m,s,p])=>{ setMarket(m); setScan(s); setPortfolio(p) }).finally(()=>setLoading(false))
+    // Load each section independently — one slow API won't block others
+    const uid = localStorage.getItem('uid') ?? ''
+
+    // Market status — fast, load first
+    fetch('/api/market')
+      .then(r=>r.json())
+      .then(setMarket)
+      .catch(()=>setMarket({ is_open:false, nifty_close:0, nifty_change:0, nifty_change_pct:0, trend:'SIDEWAYS', mood_score:50 }))
+      .finally(()=>setLoading(false))  // unblock UI as soon as market loads
+
+    // Scan results — use cached only (fast), don't trigger fresh scan on home
+    fetch('/api/scan')
+      .then(r=>r.json())
+      .then(setScan)
+      .catch(()=>{})
+
+    // Portfolio — load separately
+    fetch('/api/portfolio', { headers:{ 'x-user-id': uid } })
+      .then(r=>r.json())
+      .then(setPortfolio)
+      .catch(()=>{})
   },[])
 
   const niftyColor=(market?.nifty_change_pct??0)>=0?'var(--buy)':'var(--sell)'
@@ -149,10 +165,17 @@ function HomeTab({ onNavigate }: { onNavigate:(tab:string)=>void }) {
 // ── SCANNER ───────────────────────────────────────────────────────────────────
 function ScannerTab() {
   const [signals,setSignals]=useState<ScanSignal[]>([])
-  const [counts,setCounts]=useState({BUY:0,SELL:0,WATCH:0,HOLD:0})
+  const [counts,setCounts]=useState<Record<string,number>>({BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0})
   const [tab,setTab]=useState<'BUY'|'SELL'|'WATCH'|'HOLD'>('BUY')
   const [scanning,setScanning]=useState(false)
-  const [meta,setMeta]=useState<any>({is_market_hours:false})
+  // Calculate market hours client-side immediately (IST = UTC+5:30)
+  const getIsMarketHours = () => {
+    const now = new Date()
+    const istMin = (now.getUTCHours()*60 + now.getUTCMinutes() + 330) % (24*60)
+    const isWeekday = now.getUTCDay()>=1 && now.getUTCDay()<=5
+    return isWeekday && istMin >= 9*60+15 && istMin <= 15*60+30
+  }
+  const [meta,setMeta]=useState<any>({is_market_hours: getIsMarketHours()})
 
   const runScan=useCallback(async(force=false)=>{
     setScanning(true)
@@ -192,17 +215,32 @@ function ScannerTab() {
 
   useEffect(()=>{ if(!signals.length) runScan() },[])
 
-  const filtered=signals.filter(s=>tab==='BUY'?(s.signal==='BUY'||s.signal==='STRONG BUY'):s.signal===tab).sort((a,b)=>(b.ai_score??0)-(a.ai_score??0))
+  // Recompute counts from actual signals — source of truth
+  useEffect(()=>{
+    const c:Record<string,number>={BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0}
+    signals.forEach(s=>{ c[s.signal]=(c[s.signal]??0)+1 })
+    setCounts(c)
+  },[signals])
+
+  const filtered=signals
+    .filter(s=>{
+      if(tab==='BUY') return s.signal==='BUY'||s.signal==='STRONG BUY'
+      if(tab==='SELL') return s.signal==='SELL'
+      if(tab==='WATCH') return s.signal==='WATCH'
+      if(tab==='HOLD') return s.signal==='HOLD'
+      return false
+    })
+    .sort((a,b)=>(b.ai_score??0)-(a.ai_score??0))
 
   return (
     <div className="page">
       <div className="page-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
         <div>
           <div className="page-title">Scanner</div>
-          <div className="page-subtitle">{(counts.BUY??0)+(counts.SELL??0)+(counts.WATCH??0)+(counts.HOLD??0)} signals · {meta.scan_date??'today'}{meta.is_market_hours?' · 🟢 Live':' · 🔴 Closed'}</div>
+          <div className="page-subtitle">{(counts.BUY??0)+(counts.SELL??0)+(counts.WATCH??0)+(counts.HOLD??0)} signals · {meta.scan_date??'today'}{(meta.is_market_hours??getIsMarketHours())?' · 🟢 Live':' · 🔴 Closed'}</div>
         </div>
         <button className="btn btn-outline" style={{ fontSize:13, padding:'8px 14px' }} onClick={()=>runScan(true)} disabled={scanning}>
-          {scanning?'⏳':meta.is_market_hours?'🟢 Scan Live':'↺ Scan'}
+          {scanning?'⏳':(meta.is_market_hours??getIsMarketHours())?'🟢 Scan Live':'↺ Scan'}
         </button>
       </div>
 
