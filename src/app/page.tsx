@@ -186,7 +186,9 @@ function ScannerTab() {
 
       // If cached, use directly — no need to fetch more batches
       if(data0.cached && !force){
-        setSignals(data0.signals??[])
+        const seen0=new Map<string,any>()
+        ;(data0.signals??[]).forEach((s:any)=>{ seen0.set(s.symbol,s) })
+        setSignals([...seen0.values()])
         setCounts(data0.counts??{BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0})
         setMeta({scan_date:data0.scan_date,total_scanned:data0.total_scanned,cached:true,is_market_hours:data0.is_market_hours})
         return
@@ -205,7 +207,11 @@ function ScannerTab() {
           // Update UI progressively as each batch comes in
           const counts:{[k:string]:number}={BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0}
           allSignals.forEach(s=>{ counts[s.signal]=(counts[s.signal]??0)+1 })
-          setSignals([...allSignals])
+          // Deduplicate — keep highest ai_score per symbol
+          const seen=new Map<string,any>()
+          allSignals.forEach(s=>{ if(!seen.has(s.symbol)||((s.ai_score??0)>(seen.get(s.symbol).ai_score??0))) seen.set(s.symbol,s) })
+          const deduped=[...seen.values()]
+          setSignals(deduped)
           setCounts(counts as any)
           setMeta({scan_date:data0.scan_date,total_scanned:allSignals.length,cached:false,is_market_hours:data0.is_market_hours})
         } catch(e){ console.warn('Batch '+b+' failed:', e) }
@@ -222,15 +228,11 @@ function ScannerTab() {
     setCounts(c)
   },[signals])
 
-  const filtered=signals
-    .filter(s=>{
-      if(tab==='BUY') return s.signal==='BUY'||s.signal==='STRONG BUY'
-      if(tab==='SELL') return s.signal==='SELL'
-      if(tab==='WATCH') return s.signal==='WATCH'
-      if(tab==='HOLD') return s.signal==='HOLD'
-      return false
-    })
-    .sort((a,b)=>(b.ai_score??0)-(a.ai_score??0))
+  // Strictly filter by tab — only show signals that exactly match
+  const tabSignals = tab==='BUY'
+    ? signals.filter(s=>s.signal==='BUY'||s.signal==='STRONG BUY')
+    : signals.filter(s=>s.signal===tab)
+  const filtered = [...tabSignals].sort((a,b)=>(b.ai_score??0)-(a.ai_score??0))
 
   return (
     <div className="page">
