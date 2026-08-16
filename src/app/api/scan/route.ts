@@ -90,6 +90,7 @@ export async function GET(req: NextRequest) {
         breakout_level: result.breakout_level,
         reasons: result.reasons,
         scores: result.scores,
+        options_setup: result.options_setup ?? null,
       }
 
       // Upsert to DB
