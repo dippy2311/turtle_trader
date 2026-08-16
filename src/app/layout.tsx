@@ -2,10 +2,10 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'TurtleTrader AI',
+  title: 'Marccet',
   description: 'Indian equity trading — Turtle Trading strategy',
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'TurtleTrader' },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Marccet' },
 }
 
 export const viewport: Viewport = {
