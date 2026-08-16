@@ -12,6 +12,15 @@ export interface ScanSignal {
   stop_loss: number
   atr: number
   reasons: string[]
+  options_setup?: {
+    type: 'NR7' | 'GAP_UP' | 'GAP_DOWN' | null
+    label: string
+    suggested_action: string
+    ce_strike: number | null
+    pe_strike: number | null
+    trigger_above: number | null
+    trigger_below: number | null
+  } | null
   scores: {
     trend: number
     momentum: number
