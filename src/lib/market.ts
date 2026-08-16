@@ -94,7 +94,7 @@ export function generateChatReply(question: string, context?: {
     return `**Position Sizing — Turtle Method**\n\nFormula:\n\`\`\`\nMax Loss = Capital × 1%\nRisk/Share = Entry − Stop Loss\nShares = Max Loss ÷ Risk/Share\n\`\`\`\n\n**Example:**\nCapital ₹5,00,000 | Entry ₹500 | Stop ₹480\nMax Loss = ₹5,000\nRisk/share = ₹20\n**Shares = 250**\n\nUse the Position Size calculator on any stock detail page.`
   }
   if (q.includes('atr')) return `**ATR (Average True Range)**\n\nMeasures how much a stock moves per day on average.\n\nStop Loss = Entry − (2 × ATR)\nThis gives the trade room to breathe without being stopped by normal volatility.\n\nHigh ATR = volatile stock = buy fewer shares\nLow ATR = stable stock = buy more shares\nPosition sizing adjusts automatically.`
-  if (q.includes('adx')) return `**ADX (Average Directional Index)**\n\nMeasures trend strength (not direction).\n\n• ADX < 20: Choppy, stay out\n• ADX 20–40: Developing trend ✓\n• ADX 40–60: Strong trend — ideal\n• ADX > 60: Very strong, watch for exhaustion\n\nTurtleTrader requires ADX > 20 before any BUY signal.`
+  if (q.includes('adx')) return `**ADX (Average Directional Index)**\n\nMeasures trend strength (not direction).\n\n• ADX < 20: Choppy, stay out\n• ADX 20–40: Developing trend ✓\n• ADX 40–60: Strong trend — ideal\n• ADX > 60: Very strong, watch for exhaustion\n\nMarccet requires ADX > 20 before any BUY signal.`
 
   return `I can help with:\n\n• **Stock analysis** — ask "Should I buy RELIANCE?"\n• **Strategy** — ask "Explain the Turtle strategy"\n• **Risk** — ask "How do I size my position?"\n• **Indicators** — ask "What is ADX?" or "What is ATR?"\n\nFor a specific stock, open it from the Scanner and I'll have full context.`
 }
