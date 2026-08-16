@@ -1115,7 +1115,7 @@ function AuthScreen({ onAuth }: { onAuth:()=>void }) {
     <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', justifyContent:'center', padding:24 }}>
       <div style={{ textAlign:'center', marginBottom:40 }}>
         <div style={{ fontSize:60, marginBottom:8 }}>🐢</div>
-        <div style={{ fontSize:28, fontWeight:700 }}>TurtleTrader AI</div>
+        <div style={{ fontSize:28, fontWeight:700 }}>Marccet</div>
         <div style={{ fontSize:14, color:'var(--text-2)', marginTop:4 }}>Indian Equity · Turtle Strategy · Free</div>
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
