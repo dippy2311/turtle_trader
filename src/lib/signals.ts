@@ -25,6 +25,15 @@ export interface SignalResult {
   }
   target1?: number
   target2?: number
+  options_setup?: {
+    type: 'NR7' | 'GAP_UP' | 'GAP_DOWN' | null
+    label: string
+    suggested_action: string
+    ce_strike: number | null
+    pe_strike: number | null
+    trigger_above: number | null
+    trigger_below: number | null
+  } | null
 }
 
 // ── Pure math helpers (unchanged) ─────────────────────────────────────────────
@@ -118,6 +127,90 @@ function rollingMin(arr: number[], period: number): number[] {
 }
 
 // ── Main evaluate function (same signature, improved internals) ───────────────
+
+// ── Options setup detectors — NR7 and Gap breakout ────────────────────────────
+// These work off daily candles and flag potential options trade setups.
+// NR7: today's range is the narrowest of the last 7 days — breakout imminent.
+// Gap: today opened with a gap vs yesterday's close and didn't fill it — momentum continuation.
+
+// Round price to nearest standard NSE strike interval based on price range
+function roundToStrike(price: number): number {
+  let interval: number
+  if (price < 100)       interval = 2.5
+  else if (price < 250)  interval = 5
+  else if (price < 500)  interval = 10
+  else if (price < 1000) interval = 20
+  else if (price < 2500) interval = 50
+  else if (price < 5000) interval = 100
+  else                    interval = 200
+  return Math.round(price / interval) * interval
+}
+
+function detectOptionsSetup(bars: OHLCV[]): SignalResult['options_setup'] {
+  const n = bars.length
+  if (n < 8) return null
+
+  const last = n - 1
+  const today = bars[last]
+  const yesterday = bars[last - 1]
+  const close = today.close
+
+  // ── NR7 check — today's range is narrowest of last 7 days ──────────────────
+  const last7 = bars.slice(last - 6, last + 1)
+  const ranges = last7.map(b => b.high - b.low)
+  const todayRange = ranges[ranges.length - 1]
+  const isNR7 = ranges.every(r => todayRange <= r)
+
+  if (isNR7 && todayRange > 0) {
+    const ceStrike = roundToStrike(today.high)
+    const peStrike = roundToStrike(today.low)
+    return {
+      type: 'NR7',
+      label: '🎯 NR7 — Narrowest range in 7 days',
+      suggested_action: `Breakout imminent. On break above ₹${today.high.toFixed(2)} buy ${ceStrike} CE. On break below ₹${today.low.toFixed(2)} buy ${peStrike} PE`,
+      ce_strike: ceStrike,
+      pe_strike: peStrike,
+      trigger_above: Number(today.high.toFixed(2)),
+      trigger_below: Number(today.low.toFixed(2)),
+    }
+  }
+
+  // ── Gap check — today opened with a gap vs yesterday's close ───────────────
+  const gapPct = ((today.open - yesterday.close) / yesterday.close) * 100
+  const GAP_THRESHOLD = 1.0 // 1% gap minimum to be meaningful
+
+  if (gapPct >= GAP_THRESHOLD) {
+    const gapHeld = today.low >= yesterday.close
+    if (gapHeld) {
+      const ceStrike = roundToStrike(close)
+      return {
+        type: 'GAP_UP',
+        label: `🚀 Gap Up ${gapPct.toFixed(1)}% — held, not filled`,
+        suggested_action: `Bullish momentum. Buy ${ceStrike} CE, stop below ₹${yesterday.close.toFixed(2)}`,
+        ce_strike: ceStrike,
+        pe_strike: null,
+        trigger_above: null,
+        trigger_below: Number(yesterday.close.toFixed(2)),
+      }
+    }
+  } else if (gapPct <= -GAP_THRESHOLD) {
+    const gapHeld = today.high <= yesterday.close
+    if (gapHeld) {
+      const peStrike = roundToStrike(close)
+      return {
+        type: 'GAP_DOWN',
+        label: `📉 Gap Down ${Math.abs(gapPct).toFixed(1)}% — held, not filled`,
+        suggested_action: `Bearish momentum. Buy ${peStrike} PE, stop above ₹${yesterday.close.toFixed(2)}`,
+        ce_strike: null,
+        pe_strike: peStrike,
+        trigger_above: Number(yesterday.close.toFixed(2)),
+        trigger_below: null,
+      }
+    }
+  }
+
+  return null
+}
 
 export function evaluate(
   bars: OHLCV[],
@@ -352,6 +445,8 @@ export function evaluate(
     reasons.push(`Risk/Reward ${rr.toFixed(1)}:1 — Target ₹${target2.toFixed(2)}, Stop ₹${stopLoss.toFixed(2)}`)
   }
 
+  const optionsSetup = detectOptionsSetup(bars)
+
   return {
     signal,
     ai_score:       aiScore,
@@ -363,6 +458,7 @@ export function evaluate(
     target1:        Number(target1.toFixed(2)),
     target2:        Number(target2.toFixed(2)),
     reasons,
+    options_setup:  optionsSetup,
     scores: {
       trend:    Math.round(trendScore),
       momentum: Math.round(momentumScore),
