@@ -176,6 +176,18 @@ function ScannerTab() {
     return isWeekday && istMin >= 9*60+15 && istMin <= 15*60+30
   }
   const [meta,setMeta]=useState<any>({is_market_hours: getIsMarketHours()})
+  const [search,setSearch]=useState('')
+  const [showMyHoldings,setShowMyHoldings]=useState(false)
+  const [myHoldingSymbols,setMyHoldingSymbols]=useState<string[]>([])
+
+  // Load user's holding symbols from portfolio API
+  useEffect(()=>{
+    const uid=localStorage.getItem('uid')??''
+    fetch('/api/portfolio',{headers:{'x-user-id':uid}})
+      .then(r=>r.json())
+      .then(d=>setMyHoldingSymbols((d.positions??[]).map((p:any)=>p.symbol)))
+      .catch(()=>{})
+  },[])
 
   const runScan=useCallback(async(force=false)=>{
     setScanning(true)
@@ -229,16 +241,30 @@ function ScannerTab() {
   },[signals])
 
   // Strictly filter by tab — only show signals that exactly match
-  const tabSignals = tab==='BUY'
+  let tabSignals = tab==='BUY'
     ? signals.filter(s=>s.signal==='BUY'||s.signal==='STRONG BUY')
     : signals.filter(s=>s.signal===tab)
+
+  // My Holdings filter — only show stocks user owns
+  if(showMyHoldings){
+    tabSignals = tabSignals.filter(s=>myHoldingSymbols.includes(s.symbol))
+  }
+
+  // Search filter — by symbol or company name
+  if(search.trim()){
+    const q=search.trim().toUpperCase()
+    tabSignals = tabSignals.filter(s=>
+      s.symbol.toUpperCase().includes(q) || (s.company??'').toUpperCase().includes(q)
+    )
+  }
+
   const filtered = [...tabSignals].sort((a,b)=>(b.ai_score??0)-(a.ai_score??0))
 
   return (
     <div className="page">
       <div className="page-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
         <div>
-          <div className="page-title">Scanner</div>
+          <div className="page-title">Signals Setup</div>
           <div className="page-subtitle">{(counts.BUY??0)+(counts.SELL??0)+(counts.WATCH??0)+(counts.HOLD??0)} signals · {meta.scan_date??'today'}{(meta.is_market_hours??getIsMarketHours())?' · 🟢 Live':' · 🔴 Closed'}</div>
         </div>
         <button className="btn btn-outline" style={{ fontSize:13, padding:'8px 14px' }} onClick={()=>runScan(true)} disabled={scanning}>
@@ -264,6 +290,37 @@ function ScannerTab() {
           )
         })}
       </div>
+
+      {/* Search bar + My Holdings toggle */}
+      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+        <input
+          value={search}
+          onChange={e=>setSearch(e.target.value)}
+          placeholder={`Search in ${tab}...`}
+          style={{ flex:1, fontSize:14 }}
+        />
+        <button
+          onClick={()=>setShowMyHoldings(!showMyHoldings)}
+          style={{
+            padding:'0 14px', borderRadius:'var(--radius-md)', fontSize:12, fontWeight:600,
+            border: showMyHoldings ? '1px solid var(--accent)' : '1px solid var(--border)',
+            background: showMyHoldings ? 'var(--accent-bg)' : 'var(--bg-card)',
+            color: showMyHoldings ? 'var(--accent)' : 'var(--text-2)',
+            whiteSpace:'nowrap', cursor:'pointer',
+          }}
+        >
+          📁 My Holdings{myHoldingSymbols.length>0?` (${myHoldingSymbols.length})`:''}
+        </button>
+      </div>
+
+      {/* No results from search/filter */}
+      {(search.trim()||showMyHoldings)&&filtered.length===0&&!scanning&&(
+        <div style={{ textAlign:'center', padding:30, color:'var(--text-3)', fontSize:13 }}>
+          {showMyHoldings
+            ? `None of your holdings are in ${tab} right now`
+            : `No stocks matching "${search}" in ${tab}`}
+        </div>
+      )}
 
       {/* Bearish market warning banner — BUY tab only */}
       {tab==='BUY'&&!scanning&&signals.length>0&&(counts.BUY??0)===0&&(
@@ -358,7 +415,41 @@ function SignalCard({ sig, rank }: { sig:ScanSignal; rank:number }) {
         </div>
         <div className="conf-bar-bg"><div className="conf-bar-fill" style={{ width:`${sig.confidence*100}%`, background:color }}/></div>
         {sig.reasons[0]&&<div style={{ fontSize:12, color:'var(--text-3)', marginTop:8, fontStyle:'italic' }}>↳ {sig.reasons[0]}</div>}
-        <div style={{ marginTop:8, display:'inline-block', background:'var(--accent-bg)', borderRadius:'var(--radius-sm)', padding:'2px 8px', fontSize:10, color:'var(--accent)' }}>{sig.sector}</div>
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:8 }}>
+          <div style={{ display:'inline-block', background:'var(--accent-bg)', borderRadius:'var(--radius-sm)', padding:'2px 8px', fontSize:10, color:'var(--accent)' }}>{sig.sector}</div>
+        </div>
+        {(sig as any).options_setup && (
+          <div style={{
+            marginTop:8, padding:'8px 10px', borderRadius:'var(--radius-sm)',
+            background: (sig as any).options_setup.type==='GAP_DOWN' ? 'var(--sell-bg)' : 'var(--buy-bg)',
+            border: `1px solid ${(sig as any).options_setup.type==='GAP_DOWN' ? 'var(--sell)' : 'var(--buy)'}`,
+          }}>
+            <div style={{
+              fontSize:11, fontWeight:700, marginBottom:6,
+              color: (sig as any).options_setup.type==='GAP_DOWN' ? 'var(--sell)' : 'var(--buy)',
+            }}>{(sig as any).options_setup.label}</div>
+            <div style={{ display:'flex', gap:8 }}>
+              {(sig as any).options_setup.ce_strike && (
+                <div style={{
+                  flex:1, textAlign:'center', background:'var(--buy-bg)', border:'1px solid var(--buy)',
+                  borderRadius:6, padding:'6px 4px',
+                }}>
+                  <div style={{ fontSize:9, color:'var(--text-3)' }}>BUY CE</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--buy)' }}>{(sig as any).options_setup.ce_strike}</div>
+                </div>
+              )}
+              {(sig as any).options_setup.pe_strike && (
+                <div style={{
+                  flex:1, textAlign:'center', background:'var(--sell-bg)', border:'1px solid var(--sell)',
+                  borderRadius:6, padding:'6px 4px',
+                }}>
+                  <div style={{ fontSize:9, color:'var(--text-3)' }}>BUY PE</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--sell)' }}>{(sig as any).options_setup.pe_strike}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </a>
   )
@@ -409,7 +500,7 @@ function PortfolioTab() {
         <div style={{ textAlign:'center', padding:50, color:'var(--text-2)' }}>
           <div style={{ fontSize:36 }}>📭</div>
           <div style={{ fontWeight:600, marginTop:8 }}>No open positions</div>
-          <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Buy signals from Scanner to get started</div>
+          <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Buy signals from Signals Setup to get started</div>
         </div>
       ):positions.map((pos:any)=>(
         <a key={pos.id} href={`/stock/${pos.symbol}`}>
@@ -1050,7 +1141,7 @@ function AuthScreen({ onAuth }: { onAuth:()=>void }) {
 // ── ROOT ──────────────────────────────────────────────────────────────────────
 const NAV=[
   {id:'home',      icon:'🏠', label:'Home'},
-  {id:'scanner',   icon:'🔍', label:'Scanner'},
+  {id:'scanner',   icon:'🔍', label:'Signals Setup'},
   {id:'portfolio', icon:'📊', label:'Portfolio'},
   {id:'watchlist', icon:'👁', label:'Watchlist'},
   {id:'settings',  icon:'⚙️', label:'Settings'},
