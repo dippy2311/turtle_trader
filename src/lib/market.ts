@@ -1,7 +1,27 @@
-// Fetch OHLCV from Yahoo Finance — FREE, no API key
+// Fetch OHLCV — Upstox (live NSE data) with Yahoo Finance fallback
 import type { OHLCV } from './signals'
+import { fetchUpstoxOHLCV, fetchNiftyOHLCV } from './upstox'
+
+const USE_UPSTOX = !!process.env.UPSTOX_ACCESS_TOKEN
 
 export async function fetchOHLCV(symbol: string, days = 300): Promise<OHLCV[]> {
+  // Strip Yahoo-style suffix — Upstox uses plain NSE trading symbols
+  const cleanSymbol = symbol.replace('.NS', '')
+
+  if (USE_UPSTOX) {
+    try {
+      // Nifty 50 index — Yahoo used '^NSEI', Upstox has its own index fetcher
+      if (symbol === '^NSEI' || cleanSymbol === 'NIFTY50' || cleanSymbol === 'NIFTY') {
+        return await fetchNiftyOHLCV(days)
+      }
+      return await fetchUpstoxOHLCV(cleanSymbol, days)
+    } catch (e) {
+      console.warn(`Upstox fetch failed for ${symbol}, falling back to Yahoo Finance:`, e)
+      // fall through to Yahoo Finance below
+    }
+  }
+
+  // Yahoo Finance fallback (also used if UPSTOX_ACCESS_TOKEN is not set)
   const end = Math.floor(Date.now() / 1000)
   const start = end - days * 24 * 60 * 60
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&period1=${start}&period2=${end}`
