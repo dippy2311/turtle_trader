@@ -19,29 +19,37 @@ async function getInstrumentMap(): Promise<Map<string, string>> {
     return instrumentCache
   }
 
-  // Upstox complete instrument list — gzipped JSON
+  // Upstox complete instrument list — gzipped JSON.
+  // IMPORTANT: no Next.js `next: { revalidate }` here — this file is 15-20MB+
+  // uncompressed and exceeds Vercel's Data Cache per-entry limit, which was
+  // silently breaking the fetch (seen as "Failed to set Next.js data cache").
+  // Use cache: 'no-store' and rely on our own in-memory Map cache instead.
   const res = await fetch('https://assets.upstox.com/market-quote/instruments/exchange/complete.json.gz', {
-    next: { revalidate: 43200 }, // 12 hours
+    cache: 'no-store',
   })
-  if (!res.ok) throw new Error(`Failed to fetch Upstox instrument master: ${res.status}`)
+  if (!res.ok) throw new Error(`Failed to fetch Upstox instrument master: ${res.status} ${res.statusText}`)
 
-  // fetch() auto-decompresses gzip when Content-Encoding is set,
-  // but this file is gzip *content* not gzip *encoding* — decompress manually
   const buffer = await res.arrayBuffer()
   const decompressed = await decompressGzip(buffer)
-  const instruments: any[] = JSON.parse(decompressed)
+
+  let instruments: any[]
+  try {
+    instruments = JSON.parse(decompressed)
+  } catch (e) {
+    throw new Error(`Failed to parse Upstox instrument master JSON: ${(e as Error).message}`)
+  }
 
   const map = new Map<string, string>()
   for (const inst of instruments) {
-    // Only NSE Equity, normal security type — matches our stock universe
     if (inst.segment === 'NSE_EQ' && inst.instrument_type === 'EQ' && inst.trading_symbol) {
       map.set(inst.trading_symbol.toUpperCase(), inst.instrument_key)
     }
-    // Also map NSE Index for Nifty
     if (inst.segment === 'NSE_INDEX' && inst.trading_symbol) {
       map.set(inst.trading_symbol.toUpperCase(), inst.instrument_key)
     }
   }
+
+  if (map.size === 0) throw new Error('Upstox instrument master parsed but produced 0 entries — check segment/instrument_type field names')
 
   instrumentCache = map
   instrumentCacheTime = now
