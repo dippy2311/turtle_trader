@@ -202,7 +202,7 @@ function ScannerTab() {
         ;(data0.signals??[]).forEach((s:any)=>{ seen0.set(s.symbol,s) })
         setSignals([...seen0.values()])
         setCounts(data0.counts??{BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0})
-        setMeta({scan_date:data0.scan_date,total_scanned:data0.total_scanned,cached:true,is_market_hours:data0.is_market_hours})
+        setMeta({scan_date:data0.scan_date,total_scanned:data0.total_scanned,cached:true,is_market_hours:data0.is_market_hours,data_source:data0.data_source})
         return
       }
 
@@ -225,7 +225,7 @@ function ScannerTab() {
           const deduped=[...seen.values()]
           setSignals(deduped)
           setCounts(counts as any)
-          setMeta({scan_date:data0.scan_date,total_scanned:allSignals.length,cached:false,is_market_hours:data0.is_market_hours})
+          setMeta({scan_date:data0.scan_date,total_scanned:allSignals.length,cached:false,is_market_hours:data0.is_market_hours,data_source:data.data_source??data0.data_source})
         } catch(e){ console.warn('Batch '+b+' failed:', e) }
       }
     } finally { setScanning(false) }
@@ -266,6 +266,17 @@ function ScannerTab() {
         <div>
           <div className="page-title">Signals Setup</div>
           <div className="page-subtitle">{(counts.BUY??0)+(counts.SELL??0)+(counts.WATCH??0)+(counts.HOLD??0)} signals · {meta.scan_date??'today'}{(meta.is_market_hours??getIsMarketHours())?' · 🟢 Live':' · 🔴 Closed'}</div>
+          {meta.data_source && (
+            <div style={{
+              display:'inline-flex', alignItems:'center', gap:4, marginTop:6,
+              fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:10,
+              background: meta.data_source==='upstox' ? 'var(--buy-bg)' : 'var(--watch-bg)',
+              color: meta.data_source==='upstox' ? 'var(--buy)' : 'var(--watch)',
+              border: `1px solid ${meta.data_source==='upstox' ? 'var(--buy)' : 'var(--watch)'}`,
+            }}>
+              📡 {meta.data_source==='upstox' ? 'Upstox Live' : 'Yahoo Finance (fallback)'}
+            </div>
+          )}
         </div>
         <button className="btn btn-outline" style={{ fontSize:13, padding:'8px 14px' }} onClick={()=>runScan(true)} disabled={scanning}>
           {scanning?'⏳':(meta.is_market_hours??getIsMarketHours())?'🟢 Scan Live':'↺ Scan'}
