@@ -412,14 +412,19 @@ function SignalCard({ sig, rank }: { sig:ScanSignal; rank:number }) {
             <div style={{ fontSize:18, fontWeight:700, marginTop:4 }}>{sig.ai_score}<span style={{ fontSize:11, color:'var(--text-3)' }}>/100</span></div>
           </div>
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', background:'var(--bg-elevated)', borderRadius:'var(--radius-sm)', padding:'10px 0', marginBottom:10 }}>
-          {[['Entry',fmt(sig.entry_price),null],['Stop',fmt(sig.stop_loss),'var(--sell)'],['Risk',`${riskPct}%`,'var(--watch)']].map(([l,v,c])=>(
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', background:'var(--bg-elevated)', borderRadius:'var(--radius-sm)', padding:'10px 0', marginBottom:10 }}>
+          {[['Entry',fmt(sig.entry_price),null],['Stop',fmt(sig.stop_loss),'var(--sell)'],['Target',sig.target2?fmt(sig.target2):'—','var(--buy)'],['Risk',`${riskPct}%`,'var(--watch)']].map(([l,v,c])=>(
             <div key={l as string} style={{ textAlign:'center' }}>
               <div style={{ fontSize:10, color:'var(--text-3)' }}>{l}</div>
               <div style={{ fontSize:13, fontWeight:600, color:(c as string)??'var(--text)' }}>{v}</div>
             </div>
           ))}
         </div>
+        {sig.target2 && sig.entry_price>sig.stop_loss && (
+          <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:8 }}>
+            Risk/Reward {((sig.target2-sig.entry_price)/(sig.entry_price-sig.stop_loss)).toFixed(1)}:1
+          </div>
+        )}
         <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4, fontSize:11 }}>
           <span style={{ color:'var(--text-2)' }}>Confidence</span>
           <span style={{ color, fontWeight:700 }}>{Math.round(sig.confidence*100)}%</span>
