@@ -475,19 +475,83 @@ function SignalCard({ sig, rank }: { sig:ScanSignal; rank:number }) {
 function PortfolioTab() {
   const [data,setData]=useState<any>(null)
   const [loading,setLoading]=useState(true)
+  const [showAddForm,setShowAddForm]=useState(false)
+  const [addSymbol,setAddSymbol]=useState('')
+  const [addQty,setAddQty]=useState('')
+  const [addEntry,setAddEntry]=useState('')
+  const [addStop,setAddStop]=useState('')
+  const [addError,setAddError]=useState('')
+  const [adding,setAdding]=useState(false)
 
-  useEffect(()=>{
+  const load=()=>{
+    setLoading(true)
     const uid=localStorage.getItem('uid')??''
     fetch('/api/portfolio',{headers:{'x-user-id':uid}}).then(r=>r.json()).then(setData).finally(()=>setLoading(false))
-  },[])
+  }
+
+  useEffect(()=>{ load() },[])
 
   const summary=data?.summary??{}
   const positions=data?.positions??[]
   const pnlColor=(summary.total_pnl??0)>=0?'var(--buy)':'var(--sell)'
 
+  const addPosition=async()=>{
+    setAddError('')
+    const symbol=addSymbol.trim().toUpperCase()
+    const qty=parseInt(addQty)
+    const entry=parseFloat(addEntry)
+    const stop=parseFloat(addStop)
+
+    if(!symbol){ setAddError('Enter a stock symbol'); return }
+    if(!qty||qty<=0){ setAddError('Enter a valid quantity'); return }
+    if(!entry||entry<=0){ setAddError('Enter a valid entry price'); return }
+    if(!stop||stop<=0){ setAddError('Enter a valid stop loss'); return }
+    if(stop>=entry){ setAddError('Stop loss must be below entry price'); return }
+
+    setAdding(true)
+    try{
+      const uid=localStorage.getItem('uid')??''
+      const res=await fetch('/api/portfolio',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-user-id':uid},
+        body:JSON.stringify({ symbol, company:symbol, quantity:qty, entry_price:entry, stop_loss:stop }),
+      })
+      const json=await res.json()
+      if(json.error) throw new Error(json.error)
+      setAddSymbol(''); setAddQty(''); setAddEntry(''); setAddStop('')
+      setShowAddForm(false)
+      load()
+    }catch(e:any){
+      setAddError(e.message??'Failed to add position')
+    }finally{
+      setAdding(false)
+    }
+  }
+
   return (
     <div className="page">
-      <div className="page-header"><div className="page-title">Portfolio</div></div>
+      <div className="page-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
+        <div className="page-title">Portfolio</div>
+        <button className="btn btn-outline" style={{ fontSize:13, padding:'8px 14px' }} onClick={()=>{ setShowAddForm(!showAddForm); setAddError('') }}>
+          {showAddForm?'✕ Cancel':'+ Add Position'}
+        </button>
+      </div>
+
+      {showAddForm&&(
+        <div className="card" style={{ marginBottom:12 }}>
+          <div className="section-label">Add Position</div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+            <input placeholder="Symbol e.g. RELIANCE" value={addSymbol} onChange={e=>setAddSymbol(e.target.value.toUpperCase())} style={{ textTransform:'uppercase' }}/>
+            <input placeholder="Quantity" type="number" value={addQty} onChange={e=>setAddQty(e.target.value)}/>
+            <input placeholder="Entry Price (₹)" type="number" value={addEntry} onChange={e=>setAddEntry(e.target.value)}/>
+            <input placeholder="Stop Loss (₹)" type="number" value={addStop} onChange={e=>setAddStop(e.target.value)}/>
+          </div>
+          {addError&&<div style={{ color:'var(--sell)', fontSize:12, marginBottom:10 }}>{addError}</div>}
+          <button className="btn btn-primary btn-full" onClick={addPosition} disabled={adding}>
+            {adding?'Adding...':'Add to Portfolio'}
+          </button>
+        </div>
+      )}
       <div className="card">
         <div className="section-label">Total Value</div>
         <div style={{ fontSize:34, fontWeight:700, marginBottom:12 }}>
