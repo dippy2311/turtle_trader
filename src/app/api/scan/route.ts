@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { fetchOHLCV } from '@/lib/market'
+import { fetchOHLCV, getActiveDataSource } from '@/lib/market'
 import { evaluate } from '@/lib/signals'
 import { STOCK_UNIVERSE } from '@/lib/stocks'
 
@@ -112,6 +112,7 @@ export async function GET(req: NextRequest) {
     scan_date: today,
     cached: false,
     is_market_hours: isMarketHours,
+    data_source: getActiveDataSource(),
     market_trend: marketTrend,
     total_scanned: results.length,
     counts: counts as any,
