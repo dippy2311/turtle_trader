@@ -11,6 +11,8 @@ export interface ScanSignal {
   entry_price: number
   stop_loss: number
   atr: number
+  target1: number
+  target2: number
   reasons: string[]
   options_setup?: {
     type: 'NR7' | 'GAP_UP' | 'GAP_DOWN' | null
