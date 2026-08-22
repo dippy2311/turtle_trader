@@ -88,6 +88,8 @@ export async function GET(req: NextRequest) {
         stop_loss: result.stop_loss,
         atr: result.atr_val,
         breakout_level: result.breakout_level,
+        target1: result.target1 ?? null,
+        target2: result.target2 ?? null,
         reasons: result.reasons,
         scores: result.scores,
         options_setup: result.options_setup ?? null,
