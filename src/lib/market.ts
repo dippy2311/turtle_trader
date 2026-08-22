@@ -4,6 +4,14 @@ import { fetchUpstoxOHLCV, fetchNiftyOHLCV } from './upstox'
 
 const USE_UPSTOX = !!process.env.UPSTOX_ACCESS_TOKEN
 
+// Tracks which source actually served the last successful fetch —
+// starts as the configured preference, flips to 'yahoo' if Upstox fails at runtime.
+let lastUsedSource: 'upstox' | 'yahoo' = USE_UPSTOX ? 'upstox' : 'yahoo'
+
+export function getActiveDataSource(): 'upstox' | 'yahoo' {
+  return lastUsedSource
+}
+
 export async function fetchOHLCV(symbol: string, days = 300): Promise<OHLCV[]> {
   // Strip Yahoo-style suffix — Upstox uses plain NSE trading symbols
   const cleanSymbol = symbol.replace('.NS', '')
@@ -12,11 +20,16 @@ export async function fetchOHLCV(symbol: string, days = 300): Promise<OHLCV[]> {
     try {
       // Nifty 50 index — Yahoo used '^NSEI', Upstox has its own index fetcher
       if (symbol === '^NSEI' || cleanSymbol === 'NIFTY50' || cleanSymbol === 'NIFTY') {
-        return await fetchNiftyOHLCV(days)
+        const bars = await fetchNiftyOHLCV(days)
+        lastUsedSource = 'upstox'
+        return bars
       }
-      return await fetchUpstoxOHLCV(cleanSymbol, days)
+      const bars = await fetchUpstoxOHLCV(cleanSymbol, days)
+      lastUsedSource = 'upstox'
+      return bars
     } catch (e) {
       console.warn(`Upstox fetch failed for ${symbol}, falling back to Yahoo Finance:`, e)
+      lastUsedSource = 'yahoo'
       // fall through to Yahoo Finance below
     }
   }
