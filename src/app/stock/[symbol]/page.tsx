@@ -170,6 +170,8 @@ export default function StockPage() {
             {[
               ['Breakout Level', fmt(sig.breakout_level), 'var(--buy)'],
               ['Stop Loss', fmt(sig.stop_loss), 'var(--sell)'],
+              ['Target 1 (Resistance)', sig.target1 ? fmt(sig.target1) : '—', 'var(--buy)'],
+              ['Target 2 (1:2 R:R)', sig.target2 ? fmt(sig.target2) : '—', 'var(--buy)'],
               ['ATR (14)', sig.atr_val.toFixed(2), null],
               ['Sector', data.sector, null],
             ].map(([l, v, c]) => (
@@ -179,6 +181,14 @@ export default function StockPage() {
               </div>
             ))}
           </div>
+          {sig.target2 && sig.entry_price > sig.stop_loss && (
+            <div style={{ marginTop: 12, padding: 10, background: 'var(--accent-bg)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-2)' }}>Risk/Reward Ratio</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)', marginTop: 2 }}>
+                {((sig.target2 - sig.entry_price) / (sig.entry_price - sig.stop_loss)).toFixed(1)}:1
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
