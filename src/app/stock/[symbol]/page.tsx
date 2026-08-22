@@ -17,6 +17,8 @@ export default function StockPage() {
   const [loading, setLoading] = useState(true)
   const [capital, setCapital] = useState(100000)
   const [riskPct, setRiskPct] = useState(1)
+  const [adding, setAdding] = useState(false)
+  const [addMsg, setAddMsg] = useState('')
 
   useEffect(() => {
     fetch(`/api/stock?symbol=${symbol}`)
@@ -161,6 +163,39 @@ export default function StockPage() {
               </div>
             ))}
           </div>
+
+          <button
+            className="btn btn-primary btn-full"
+            style={{ marginTop: 14 }}
+            disabled={shares<=0||adding}
+            onClick={async()=>{
+              setAdding(true); setAddMsg('')
+              try{
+                const uid=localStorage.getItem('uid')??''
+                const res=await fetch('/api/portfolio',{
+                  method:'POST',
+                  headers:{'Content-Type':'application/json','x-user-id':uid},
+                  body:JSON.stringify({
+                    symbol: data.symbol,
+                    company: data.company,
+                    quantity: shares,
+                    entry_price: sig.entry_price,
+                    stop_loss: sig.stop_loss,
+                  }),
+                })
+                const json=await res.json()
+                if(json.error) throw new Error(json.error)
+                setAddMsg('✅ Added to Portfolio')
+              }catch(e:any){
+                setAddMsg('⚠️ '+(e.message??'Failed to add'))
+              }finally{
+                setAdding(false)
+              }
+            }}
+          >
+            {adding ? 'Adding...' : `+ Add ${shares} shares to Portfolio`}
+          </button>
+          {addMsg && <div style={{ marginTop: 8, fontSize: 13, textAlign: 'center', color: addMsg.startsWith('✅') ? 'var(--buy)' : 'var(--sell)' }}>{addMsg}</div>}
         </div>
 
         {/* Key levels */}
