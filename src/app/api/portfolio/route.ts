@@ -67,3 +67,59 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   return NextResponse.json({ position: data })
 }
+
+// DELETE — permanently remove a position (mistaken entry, wrong data)
+export async function DELETE(req: NextRequest) {
+  const userId = req.headers.get('x-user-id')
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const positionId = req.nextUrl.searchParams.get('id')
+  if (!positionId) return NextResponse.json({ error: 'Position id required' }, { status: 400 })
+
+  const db = supabaseAdmin()
+  const { error } = await db
+    .from('positions')
+    .delete()
+    .eq('id', positionId)
+    .eq('user_id', userId) // ensure users can only delete their own positions
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  return NextResponse.json({ success: true })
+}
+
+// PATCH — close a position (mark as sold, keep it in history with exit details)
+export async function PATCH(req: NextRequest) {
+  const userId = req.headers.get('x-user-id')
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const body = await req.json()
+  const { id, exit_price } = body
+  if (!id) return NextResponse.json({ error: 'Position id required' }, { status: 400 })
+  if (!exit_price || exit_price <= 0) return NextResponse.json({ error: 'Valid exit price required' }, { status: 400 })
+
+  const db = supabaseAdmin()
+
+  // Fetch the position first to compute realised P&L
+  const { data: pos, error: fetchErr } = await db
+    .from('positions')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single()
+
+  if (fetchErr || !pos) return NextResponse.json({ error: 'Position not found' }, { status: 404 })
+
+  const realisedPnl = (exit_price - pos.avg_price) * pos.quantity
+
+  const { error: updateErr } = await db
+    .from('positions')
+    .update({
+      status: 'CLOSED',
+      exit_price,
+      exit_date: new Date().toISOString().slice(0, 10),
+      final_pnl: realisedPnl,
+    })
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 400 })
+  return NextResponse.json({ success: true, realised_pnl: realisedPnl })
+}
