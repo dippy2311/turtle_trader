@@ -6,6 +6,13 @@ export const metadata: Metadata = {
   description: 'Indian equity trading — Turtle Trading strategy',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Marccet' },
+  icons: {
+    icon: [
+      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: '/icon-192.png',
+  },
 }
 
 export const viewport: Viewport = {
