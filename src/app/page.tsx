@@ -528,6 +528,53 @@ function PortfolioTab() {
     }
   }
 
+  const [actionPosId,setActionPosId]=useState<number|null>(null)
+  const [closeExitPrice,setCloseExitPrice]=useState('')
+  const [posActionLoading,setPosActionLoading]=useState(false)
+  const [posActionError,setPosActionError]=useState('')
+
+  const closePosition=async(posId:number)=>{
+    setPosActionError('')
+    const exitPrice=parseFloat(closeExitPrice)
+    if(!exitPrice||exitPrice<=0){ setPosActionError('Enter a valid exit price'); return }
+    setPosActionLoading(true)
+    try{
+      const uid=localStorage.getItem('uid')??''
+      const res=await fetch('/api/portfolio',{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json','x-user-id':uid},
+        body:JSON.stringify({ id:posId, exit_price:exitPrice }),
+      })
+      const json=await res.json()
+      if(json.error) throw new Error(json.error)
+      setActionPosId(null); setCloseExitPrice('')
+      load()
+    }catch(e:any){
+      setPosActionError(e.message??'Failed to close position')
+    }finally{
+      setPosActionLoading(false)
+    }
+  }
+
+  const deletePosition=async(posId:number)=>{
+    if(!confirm('Delete this position permanently? This cannot be undone.')) return
+    setPosActionLoading(true)
+    try{
+      const uid=localStorage.getItem('uid')??''
+      const res=await fetch(`/api/portfolio?id=${posId}`,{
+        method:'DELETE',
+        headers:{'x-user-id':uid},
+      })
+      const json=await res.json()
+      if(json.error) throw new Error(json.error)
+      load()
+    }catch(e:any){
+      alert(e.message??'Failed to delete position')
+    }finally{
+      setPosActionLoading(false)
+    }
+  }
+
   return (
     <div className="page">
       <div className="page-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
@@ -583,8 +630,8 @@ function PortfolioTab() {
           <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Buy signals from Signals Setup to get started</div>
         </div>
       ):positions.map((pos:any)=>(
-        <a key={pos.id} href={`/stock/${pos.symbol}`}>
-          <div className="card" style={{ marginBottom:10 }}>
+        <div key={pos.id} className="card" style={{ marginBottom:10 }}>
+          <a href={`/stock/${pos.symbol}`} style={{ display:'block' }}>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
               <div>
                 <div style={{ fontWeight:700, fontSize:16 }}>{pos.symbol}</div>
@@ -603,8 +650,47 @@ function PortfolioTab() {
                 </div>
               ))}
             </div>
+          </a>
+
+          {/* Action buttons */}
+          <div style={{ display:'flex', gap:8, marginTop:10 }}>
+            <button
+              className="btn btn-outline"
+              style={{ flex:1, fontSize:12, padding:'8px 0' }}
+              onClick={()=>{ setActionPosId(actionPosId===pos.id?null:pos.id); setCloseExitPrice(''); setPosActionError('') }}
+            >
+              {actionPosId===pos.id ? '✕ Cancel' : '📤 Close Position'}
+            </button>
+            <button
+              className="btn btn-danger"
+              style={{ flex:1, fontSize:12, padding:'8px 0' }}
+              onClick={()=>deletePosition(pos.id)}
+              disabled={posActionLoading}
+            >
+              🗑 Delete
+            </button>
           </div>
-        </a>
+
+          {/* Close position inline form */}
+          {actionPosId===pos.id && (
+            <div style={{ marginTop:10, padding:10, background:'var(--bg-elevated)', borderRadius:8 }}>
+              <div style={{ fontSize:12, color:'var(--text-2)', marginBottom:8 }}>Exit price for {pos.symbol}</div>
+              <div style={{ display:'flex', gap:8 }}>
+                <input
+                  type="number"
+                  placeholder={`e.g. ${pos.current_price}`}
+                  value={closeExitPrice}
+                  onChange={e=>setCloseExitPrice(e.target.value)}
+                  style={{ flex:1 }}
+                />
+                <button className="btn btn-primary" style={{ padding:'0 16px' }} onClick={()=>closePosition(pos.id)} disabled={posActionLoading}>
+                  {posActionLoading?'...':'Confirm'}
+                </button>
+              </div>
+              {posActionError && <div style={{ color:'var(--sell)', fontSize:12, marginTop:6 }}>{posActionError}</div>}
+            </div>
+          )}
+        </div>
       ))}
     </div>
   )
