@@ -1280,7 +1280,7 @@ function AuthScreen({ onAuth }: { onAuth:()=>void }) {
   return (
     <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', justifyContent:'center', padding:24 }}>
       <div style={{ textAlign:'center', marginBottom:40 }}>
-        <div style={{ fontSize:60, marginBottom:8 }}>🐢</div>
+        <img src="/icon-192.png" alt="Marccet" style={{ width:100, height:100, borderRadius:20, marginBottom:8 }}/>
         <div style={{ fontSize:28, fontWeight:700 }}>Marccet</div>
         <div style={{ fontSize:14, color:'var(--text-2)', marginTop:4 }}>Indian Equity · Turtle Strategy · Free</div>
       </div>
