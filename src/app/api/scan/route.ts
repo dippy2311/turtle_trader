@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { fetchOHLCV, getActiveDataSource } from '@/lib/market'
+import { fetchOHLCV, getActiveDataSource, getMarketTrend } from '@/lib/market'
 import { evaluate } from '@/lib/signals'
 import { STOCK_UNIVERSE } from '@/lib/stocks'
 
@@ -49,20 +49,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Get Nifty trend first
-  let marketTrend: 'BULLISH' | 'BEARISH' | 'SIDEWAYS' = 'SIDEWAYS'
-  try {
-    const niftyBars = await fetchOHLCV('^NSEI', 300)
-    if (niftyBars.length >= 200) {
-      const closes = niftyBars.map(b => b.close)
-      const last = closes.length - 1
-      const ema50 = closes.slice(last - 49, last + 1).reduce((a, b) => a + b) / 50
-      const ema200 = closes.slice(last - 199, last + 1).reduce((a, b) => a + b) / 200
-      const curr = closes[last]
-      if (curr > ema200 && ema50 > ema200) marketTrend = 'BULLISH'
-      else if (curr < ema200 && ema50 < ema200) marketTrend = 'BEARISH'
-    }
-  } catch { /* use SIDEWAYS */ }
+  // Get Nifty trend first — shared with stock detail page so scores never diverge
+  const marketTrend = await getMarketTrend()
 
   // Select batch of stocks — each batch = 50 stocks
   const BATCH_SIZE = 50
