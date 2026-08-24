@@ -191,6 +191,7 @@ function ScannerTab() {
 
   const runScan=useCallback(async(force=false)=>{
     setScanning(true)
+    setSignals([]) // clear old results so the buffering (bull) screen shows for the WHOLE fresh scan
     try {
       // Batch 0 first — returns quickly with first 50 stocks + cached check
       const res0=await fetch(`/api/scan${force?'?force=1':''}`)
@@ -206,28 +207,30 @@ function ScannerTab() {
         return
       }
 
-      // Fresh scan — collect all signals from all batches
+      // Fresh scan — collect all signals from all batches, but DON'T push to
+      // state until every batch has completed. This keeps the bull buffering
+      // animation visible for the full scan instead of flashing away after
+      // the first batch resolves.
       let allSignals=[...(data0.signals??[])]
       const totalBatches=7 // 7 batches × 50 = 350 stocks
 
-      // Fetch remaining batches in parallel (2 at a time to avoid rate limits)
       for(let b=1; b<totalBatches; b++){
         try {
           const res=await fetch(`/api/scan?batch=${b}${force?'&force=1':''}`)
           const data=await res.json()
           allSignals=[...allSignals,...(data.signals??[])]
-          // Update UI progressively as each batch comes in
-          const counts:{[k:string]:number}={BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0}
-          allSignals.forEach(s=>{ counts[s.signal]=(counts[s.signal]??0)+1 })
-          // Deduplicate — keep highest ai_score per symbol
-          const seen=new Map<string,any>()
-          allSignals.forEach(s=>{ if(!seen.has(s.symbol)||((s.ai_score??0)>(seen.get(s.symbol).ai_score??0))) seen.set(s.symbol,s) })
-          const deduped=[...seen.values()]
-          setSignals(deduped)
-          setCounts(counts as any)
-          setMeta({scan_date:data0.scan_date,total_scanned:allSignals.length,cached:false,is_market_hours:data0.is_market_hours,data_source:data.data_source??data0.data_source})
         } catch(e){ console.warn('Batch '+b+' failed:', e) }
       }
+
+      // All batches done — now reveal results in one go
+      const counts:{[k:string]:number}={BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0}
+      allSignals.forEach(s=>{ counts[s.signal]=(counts[s.signal]??0)+1 })
+      const seen=new Map<string,any>()
+      allSignals.forEach(s=>{ if(!seen.has(s.symbol)||((s.ai_score??0)>(seen.get(s.symbol).ai_score??0))) seen.set(s.symbol,s) })
+      const deduped=[...seen.values()]
+      setSignals(deduped)
+      setCounts(counts as any)
+      setMeta({scan_date:data0.scan_date,total_scanned:allSignals.length,cached:false,is_market_hours:data0.is_market_hours,data_source:data0.data_source})
     } finally { setScanning(false) }
   },[])
 
@@ -530,25 +533,35 @@ function PortfolioTab() {
 
   const [actionPosId,setActionPosId]=useState<number|null>(null)
   const [closeExitPrice,setCloseExitPrice]=useState('')
+  const [closeQty,setCloseQty]=useState('')
   const [posActionLoading,setPosActionLoading]=useState(false)
   const [posActionError,setPosActionError]=useState('')
+  const [posActionSuccess,setPosActionSuccess]=useState('')
 
-  const closePosition=async(posId:number)=>{
-    setPosActionError('')
+  const closePosition=async(posId:number, fullQty:number)=>{
+    setPosActionError(''); setPosActionSuccess('')
     const exitPrice=parseFloat(closeExitPrice)
+    const qty=closeQty.trim()===''?fullQty:parseInt(closeQty)
     if(!exitPrice||exitPrice<=0){ setPosActionError('Enter a valid exit price'); return }
+    if(!qty||qty<=0){ setPosActionError('Enter a valid quantity'); return }
+    if(qty>fullQty){ setPosActionError(`You only hold ${fullQty} shares`); return }
     setPosActionLoading(true)
     try{
       const uid=localStorage.getItem('uid')??''
       const res=await fetch('/api/portfolio',{
         method:'PATCH',
         headers:{'Content-Type':'application/json','x-user-id':uid},
-        body:JSON.stringify({ id:posId, exit_price:exitPrice }),
+        body:JSON.stringify({ id:posId, exit_price:exitPrice, quantity:qty }),
       })
       const json=await res.json()
       if(json.error) throw new Error(json.error)
-      setActionPosId(null); setCloseExitPrice('')
-      load()
+      if(json.partial){
+        setPosActionSuccess(`✅ Sold ${json.sold_quantity} shares · P&L ₹${json.realised_pnl.toFixed(2)} · ${json.remaining_quantity} remaining`)
+        setTimeout(()=>{ setActionPosId(null); setCloseExitPrice(''); setCloseQty(''); setPosActionSuccess(''); load() }, 2000)
+      } else {
+        setActionPosId(null); setCloseExitPrice(''); setCloseQty('')
+        load()
+      }
     }catch(e:any){
       setPosActionError(e.message??'Failed to close position')
     }finally{
@@ -671,23 +684,56 @@ function PortfolioTab() {
             </button>
           </div>
 
-          {/* Close position inline form */}
+          {/* Close position inline form — supports full or partial exit */}
           {actionPosId===pos.id && (
             <div style={{ marginTop:10, padding:10, background:'var(--bg-elevated)', borderRadius:8 }}>
-              <div style={{ fontSize:12, color:'var(--text-2)', marginBottom:8 }}>Exit price for {pos.symbol}</div>
-              <div style={{ display:'flex', gap:8 }}>
+              <div style={{ fontSize:12, color:'var(--text-2)', marginBottom:8 }}>Sell shares of {pos.symbol} (you hold {pos.quantity})</div>
+
+              <div style={{ display:'flex', gap:8, marginBottom:8 }}>
                 <input
                   type="number"
-                  placeholder={`e.g. ${pos.current_price}`}
+                  placeholder={`Qty (max ${pos.quantity})`}
+                  value={closeQty}
+                  onChange={e=>setCloseQty(e.target.value)}
+                  style={{ flex:1 }}
+                />
+                <input
+                  type="number"
+                  placeholder={`Exit price e.g. ${pos.current_price}`}
                   value={closeExitPrice}
                   onChange={e=>setCloseExitPrice(e.target.value)}
                   style={{ flex:1 }}
                 />
-                <button className="btn btn-primary" style={{ padding:'0 16px' }} onClick={()=>closePosition(pos.id)} disabled={posActionLoading}>
-                  {posActionLoading?'...':'Confirm'}
-                </button>
               </div>
+
+              {/* Quick quantity presets */}
+              <div style={{ display:'flex', gap:6, marginBottom:8 }}>
+                {[
+                  ['25%', Math.max(1,Math.round(pos.quantity*0.25))],
+                  ['50%', Math.max(1,Math.round(pos.quantity*0.5))],
+                  ['75%', Math.max(1,Math.round(pos.quantity*0.75))],
+                  ['All', pos.quantity],
+                ].map(([label,qty])=>(
+                  <button
+                    key={label as string}
+                    onClick={()=>setCloseQty(String(qty))}
+                    style={{
+                      flex:1, fontSize:11, padding:'6px 0', borderRadius:6,
+                      background: closeQty===String(qty) ? 'var(--accent-bg)' : 'var(--bg-card)',
+                      border: `1px solid ${closeQty===String(qty) ? 'var(--accent)' : 'var(--border)'}`,
+                      color: closeQty===String(qty) ? 'var(--accent)' : 'var(--text-2)',
+                      cursor:'pointer',
+                    }}
+                  >{label}</button>
+                ))}
+              </div>
+
+              <button className="btn btn-primary btn-full" onClick={()=>closePosition(pos.id, pos.quantity)} disabled={posActionLoading}>
+                {posActionLoading?'...':'Confirm Sell'}
+              </button>
+
               {posActionError && <div style={{ color:'var(--sell)', fontSize:12, marginTop:6 }}>{posActionError}</div>}
+              {posActionSuccess && <div style={{ color:'var(--buy)', fontSize:12, marginTop:6, fontWeight:600 }}>{posActionSuccess}</div>}
             </div>
           )}
         </div>
