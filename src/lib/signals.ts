@@ -400,7 +400,16 @@ export function evaluate(
 
   // ── STOP LOSS — max of swing low and close - 2×ATR ───────────────────────────
   const atrStop   = close - 2 * atrVal
-  const stopLoss  = Math.max(swingLow, atrStop)
+  let stopLoss    = Math.max(swingLow, atrStop)
+
+  // Safety clamp: stop loss must always sit strictly below entry price.
+  // If swingLow (last 10-day low) sits at/above entryPrice — which can happen
+  // when price has been very tight/flat recently, or entry was pulled down to
+  // the pullback zone — fall back to the pure ATR-based stop, which is always
+  // below `close` (and close >= entryPrice by construction above).
+  if (stopLoss >= entryPrice) {
+    stopLoss = Math.min(atrStop, entryPrice - atrVal) // guarantee at least 1×ATR of room
+  }
 
   // ── TARGETS ──────────────────────────────────────────────────────────────────
   // Target 1: nearest resistance = 55-day high (if not broken) or +1.5×ATR
