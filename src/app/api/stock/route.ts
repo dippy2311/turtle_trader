@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchOHLCV, generateExplanation } from '@/lib/market'
+import { fetchOHLCV, generateExplanation, getMarketTrend } from '@/lib/market'
 import { evaluate } from '@/lib/signals'
 import { STOCK_UNIVERSE } from '@/lib/stocks'
 
@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const bars = await fetchOHLCV(yfSymbol, 300)
-    const result = evaluate(bars)
+    const marketTrend = await getMarketTrend()
+    const result = evaluate(bars, marketTrend)
     const explanation = generateExplanation(symbol, {
       signal: result.signal,
       ai_score: result.ai_score,
