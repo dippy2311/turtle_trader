@@ -65,6 +65,27 @@ export async function fetchOHLCV(symbol: string, days = 300): Promise<OHLCV[]> {
 
 // ── Rule-based AI explanation — FREE, no LLM ─────────────────────────────────
 
+// ── Shared market trend calculator ────────────────────────────────────────────
+// Single source of truth for BULLISH/BEARISH/SIDEWAYS — used by both the
+// scanner (bulk scan) and the stock detail page, so AI scores never diverge
+// between the list view and the detail view for the same stock.
+export async function getMarketTrend(): Promise<'BULLISH' | 'BEARISH' | 'SIDEWAYS'> {
+  let marketTrend: 'BULLISH' | 'BEARISH' | 'SIDEWAYS' = 'SIDEWAYS'
+  try {
+    const niftyBars = await fetchOHLCV('^NSEI', 300)
+    if (niftyBars.length >= 200) {
+      const closes = niftyBars.map(b => b.close)
+      const last = closes.length - 1
+      const ema50 = closes.slice(last - 49, last + 1).reduce((a, b) => a + b) / 50
+      const ema200 = closes.slice(last - 199, last + 1).reduce((a, b) => a + b) / 200
+      const curr = closes[last]
+      if (curr > ema200 && ema50 > ema200) marketTrend = 'BULLISH'
+      else if (curr < ema200 && ema50 < ema200) marketTrend = 'BEARISH'
+    }
+  } catch { /* use SIDEWAYS */ }
+  return marketTrend
+}
+
 export function generateExplanation(symbol: string, data: {
   signal: string; ai_score: number; confidence: number
   entry_price: number; stop_loss: number
