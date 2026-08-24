@@ -87,17 +87,20 @@ export async function DELETE(req: NextRequest) {
 }
 
 // PATCH — close a position (mark as sold, keep it in history with exit details)
+// PATCH — close a position fully OR partially.
+// Pass `quantity` less than the position's full quantity for a partial exit
+// (e.g. selling half at Target 1, keeping the rest running to Target 2).
+// Omit `quantity` (or pass the full amount) to close the entire position.
 export async function PATCH(req: NextRequest) {
   const userId = req.headers.get('x-user-id')
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await req.json()
-  const { id, exit_price } = body
+  const { id, exit_price, quantity } = body
   if (!id) return NextResponse.json({ error: 'Position id required' }, { status: 400 })
   if (!exit_price || exit_price <= 0) return NextResponse.json({ error: 'Valid exit price required' }, { status: 400 })
 
   const db = supabaseAdmin()
 
-  // Fetch the position first to compute realised P&L
   const { data: pos, error: fetchErr } = await db
     .from('positions')
     .select('*')
@@ -107,19 +110,58 @@ export async function PATCH(req: NextRequest) {
 
   if (fetchErr || !pos) return NextResponse.json({ error: 'Position not found' }, { status: 404 })
 
-  const realisedPnl = (exit_price - pos.avg_price) * pos.quantity
+  const sellQty = quantity && quantity > 0 ? Math.min(quantity, pos.quantity) : pos.quantity
+  const isPartial = sellQty < pos.quantity
+  const realisedPnl = (exit_price - pos.avg_price) * sellQty
+  const exitDate = new Date().toISOString().slice(0, 10)
 
+  if (isPartial) {
+    // 1) Log the sold portion as its own CLOSED record — preserves accurate history
+    const { error: insertErr } = await db.from('positions').insert({
+      user_id: userId,
+      symbol: pos.symbol,
+      company: pos.company,
+      quantity: sellQty,
+      avg_price: pos.avg_price,
+      stop_loss: pos.stop_loss,
+      entry_date: pos.entry_date,
+      status: 'CLOSED',
+      exit_price,
+      exit_date: exitDate,
+      final_pnl: realisedPnl,
+    })
+    if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 400 })
+
+    // 2) Reduce the remaining open position's quantity — stays OPEN
+    const { error: updateErr } = await db
+      .from('positions')
+      .update({ quantity: pos.quantity - sellQty })
+      .eq('id', id)
+      .eq('user_id', userId)
+
+    if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 400 })
+
+    return NextResponse.json({
+      success: true,
+      partial: true,
+      sold_quantity: sellQty,
+      remaining_quantity: pos.quantity - sellQty,
+      realised_pnl: realisedPnl,
+    })
+  }
+
+  // Full close — original behaviour
   const { error: updateErr } = await db
     .from('positions')
     .update({
       status: 'CLOSED',
       exit_price,
-      exit_date: new Date().toISOString().slice(0, 10),
+      exit_date: exitDate,
       final_pnl: realisedPnl,
     })
     .eq('id', id)
     .eq('user_id', userId)
 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 400 })
-  return NextResponse.json({ success: true, realised_pnl: realisedPnl })
+  return NextResponse.json({ success: true, partial: false, realised_pnl: realisedPnl })
 }
