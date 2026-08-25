@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const yfSymbol = stock?.symbol ?? `${symbol}.NS`
 
   try {
-    const bars = await fetchOHLCV(yfSymbol, 300)
+    const bars = await fetchOHLCV(yfSymbol, 300, true) // true = include live intraday merge — single-stock page can afford the extra call
     const marketTrend = await getMarketTrend()
     const result = evaluate(bars, marketTrend)
     const explanation = generateExplanation(symbol, {
