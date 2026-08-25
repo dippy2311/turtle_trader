@@ -74,6 +74,13 @@ export async function getInstrumentKey(symbol: string): Promise<string> {
 }
 
 // ── Fetch historical daily candles from Upstox V3 API ────────────────────────
+// IMPORTANT: Upstox's historical-candle endpoint only returns FULLY CLOSED
+// trading days — today's still-forming candle is deliberately excluded until
+// the exchange finalizes end-of-day data (typically after ~4 PM IST). To get
+// a live/current price during market hours, we separately fetch today's
+// intraday 1-minute bars and collapse them into a synthetic "today" daily
+// candle, then append it — so scans reflect the live price all day, not
+// just yesterday's close.
 export async function fetchUpstoxOHLCV(symbol: string, days = 300): Promise<OHLCV[]> {
   const instrumentKey = await getInstrumentKey(symbol)
 
@@ -84,7 +91,6 @@ export async function fetchUpstoxOHLCV(symbol: string, days = 300): Promise<OHLC
   const toStr = toDate.toISOString().slice(0, 10)
   const fromStr = fromDate.toISOString().slice(0, 10)
 
-  // V3 historical candle endpoint: /v3/historical-candle/{instrument_key}/days/1/{to}/{from}
   const encodedKey = encodeURIComponent(instrumentKey)
   const url = `${UPSTOX_BASE}/v3/historical-candle/${encodedKey}/days/1/${toStr}/${fromStr}`
 
@@ -93,7 +99,7 @@ export async function fetchUpstoxOHLCV(symbol: string, days = 300): Promise<OHLC
       'Accept': 'application/json',
       'Authorization': `Bearer ${UPSTOX_TOKEN}`,
     },
-    next: { revalidate: 3600 }, // 1 hour cache
+    cache: 'no-store', // always fetch fresh — historical days rarely change but must not lag
   })
 
   if (!res.ok) {
@@ -104,10 +110,8 @@ export async function fetchUpstoxOHLCV(symbol: string, days = 300): Promise<OHLC
   const json = await res.json()
   if (json.status !== 'success') throw new Error(`Upstox returned error status for ${symbol}`)
 
-  // candles format: [timestamp, open, high, low, close, volume, oi]
   const candles: any[][] = json.data?.candles ?? []
 
-  // Upstox returns newest-first — reverse to oldest-first (what signals.ts expects)
   const bars: OHLCV[] = candles
     .map(c => ({
       date: c[0].slice(0, 10),
@@ -120,7 +124,57 @@ export async function fetchUpstoxOHLCV(symbol: string, days = 300): Promise<OHLC
     .filter(b => b.close > 0)
     .reverse()
 
+  // ── Append today's live candle from intraday data, if today isn't already
+  // present (i.e. the historical endpoint hasn't published it yet) ──────────
+  const todayStr = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10) // IST date
+  const alreadyHasToday = bars.length > 0 && bars[bars.length - 1].date === todayStr
+
+  if (!alreadyHasToday) {
+    try {
+      const todayCandle = await fetchTodaysSyntheticCandle(instrumentKey, todayStr)
+      if (todayCandle) bars.push(todayCandle)
+    } catch {
+      // Market may be closed / pre-open / no intraday data yet — fine to skip,
+      // bars will just reflect the last fully closed session.
+    }
+  }
+
   return bars
+}
+
+// Collapses today's 1-minute intraday bars into one synthetic daily OHLCV bar
+async function fetchTodaysSyntheticCandle(instrumentKey: string, todayStr: string): Promise<OHLCV | null> {
+  const encodedKey = encodeURIComponent(instrumentKey)
+  const url = `${UPSTOX_BASE}/v3/historical-candle/intraday/${encodedKey}/minutes/1`
+
+  const res = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${UPSTOX_TOKEN}`,
+    },
+    cache: 'no-store',
+  })
+  if (!res.ok) return null
+
+  const json = await res.json()
+  const candles: any[][] = json.data?.candles ?? []
+  if (!candles.length) return null
+
+  // candles are newest-first: [timestamp, open, high, low, close, volume, oi]
+  const opens  = candles.map(c => Number(c[1]))
+  const highs  = candles.map(c => Number(c[2]))
+  const lows   = candles.map(c => Number(c[3]))
+  const closes = candles.map(c => Number(c[4]))
+  const vols   = candles.map(c => Number(c[5]))
+
+  return {
+    date: todayStr,
+    open:  opens[opens.length - 1],   // oldest bar in the (newest-first) array = day's open
+    high:  Math.max(...highs),
+    low:   Math.min(...lows),
+    close: closes[0],                  // newest bar = latest live price
+    volume: vols.reduce((a, b) => a + b, 0),
+  }
 }
 
 // ── Get Nifty 50 index data ────────────────────────────────────────────────────
@@ -143,7 +197,7 @@ export async function fetchNiftyOHLCV(days = 300): Promise<OHLCV[]> {
       'Accept': 'application/json',
       'Authorization': `Bearer ${UPSTOX_TOKEN}`,
     },
-    next: { revalidate: 3600 },
+    cache: 'no-store',
   })
 
   if (!res.ok) throw new Error(`Upstox Nifty fetch failed: ${res.status}`)
@@ -151,7 +205,7 @@ export async function fetchNiftyOHLCV(days = 300): Promise<OHLCV[]> {
   const json = await res.json()
   const candles: any[][] = json.data?.candles ?? []
 
-  return candles
+  const bars: OHLCV[] = candles
     .map(c => ({
       date: c[0].slice(0, 10),
       open: Number(c[1]),
@@ -162,6 +216,21 @@ export async function fetchNiftyOHLCV(days = 300): Promise<OHLCV[]> {
     }))
     .filter(b => b.close > 0)
     .reverse()
+
+  // Same live-candle merge as fetchUpstoxOHLCV — Nifty's trend must also
+  // reflect today's live level, not yesterday's close, or the whole
+  // BULLISH/BEARISH market_trend used across every scan lags by a day.
+  const todayStr = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10)
+  const alreadyHasToday = bars.length > 0 && bars[bars.length - 1].date === todayStr
+
+  if (!alreadyHasToday) {
+    try {
+      const todayCandle = await fetchTodaysSyntheticCandle(NIFTY_INSTRUMENT_KEY, todayStr)
+      if (todayCandle) bars.push(todayCandle)
+    } catch { /* fine to skip if intraday not available yet */ }
+  }
+
+  return bars
 }
 
 // ── Intraday candles (for 3:16 PM and 15-min tabs) ────────────────────────────
