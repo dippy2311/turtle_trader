@@ -81,7 +81,7 @@ export async function getInstrumentKey(symbol: string): Promise<string> {
 // intraday 1-minute bars and collapse them into a synthetic "today" daily
 // candle, then append it — so scans reflect the live price all day, not
 // just yesterday's close.
-export async function fetchUpstoxOHLCV(symbol: string, days = 300): Promise<OHLCV[]> {
+export async function fetchUpstoxOHLCV(symbol: string, days = 300, includeLiveCandle = true): Promise<OHLCV[]> {
   const instrumentKey = await getInstrumentKey(symbol)
 
   const toDate = new Date()
@@ -124,22 +124,31 @@ export async function fetchUpstoxOHLCV(symbol: string, days = 300): Promise<OHLC
     .filter(b => b.close > 0)
     .reverse()
 
-  // ── Append today's live candle from intraday data, if today isn't already
-  // present (i.e. the historical endpoint hasn't published it yet) ──────────
+  // ── Append today's live candle from intraday data — but ONLY during
+  // market hours. Outside market hours the historical endpoint's most
+  // recent bar is already the final, correct close for the day, so this
+  // extra call would be pure wasted latency across an entire 350-stock scan.
   const todayStr = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10) // IST date
   const alreadyHasToday = bars.length > 0 && bars[bars.length - 1].date === todayStr
 
-  if (!alreadyHasToday) {
+  if (!alreadyHasToday && includeLiveCandle && isMarketHoursNow()) {
     try {
       const todayCandle = await fetchTodaysSyntheticCandle(instrumentKey, todayStr)
       if (todayCandle) bars.push(todayCandle)
     } catch {
-      // Market may be closed / pre-open / no intraday data yet — fine to skip,
-      // bars will just reflect the last fully closed session.
+      // Intraday not available yet (e.g. just after 9:15 open) — fine to skip.
     }
   }
 
   return bars
+}
+
+// Cheap check — avoids the extra intraday API call entirely when markets are shut
+function isMarketHoursNow(): boolean {
+  const now = new Date()
+  const istMinutes = (now.getUTCHours() * 60 + now.getUTCMinutes() + 330) % (24 * 60)
+  const isWeekday = now.getUTCDay() >= 1 && now.getUTCDay() <= 5
+  return isWeekday && istMinutes >= 9 * 60 + 15 && istMinutes <= 15 * 60 + 30
 }
 
 // Collapses today's 1-minute intraday bars into one synthetic daily OHLCV bar
@@ -223,7 +232,7 @@ export async function fetchNiftyOHLCV(days = 300): Promise<OHLCV[]> {
   const todayStr = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10)
   const alreadyHasToday = bars.length > 0 && bars[bars.length - 1].date === todayStr
 
-  if (!alreadyHasToday) {
+  if (!alreadyHasToday && isMarketHoursNow()) {
     try {
       const todayCandle = await fetchTodaysSyntheticCandle(NIFTY_INSTRUMENT_KEY, todayStr)
       if (todayCandle) bars.push(todayCandle)
