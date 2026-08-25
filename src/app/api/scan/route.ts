@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   const results = []
   for (const stock of stocks) {
     try {
-      const bars = await fetchOHLCV(stock.symbol, 300)
+      const bars = await fetchOHLCV(stock.symbol, 300, false) // false = skip live intraday merge — bulk scan uses last closed session for speed
       const result = evaluate(bars, marketTrend)
 
       const row = {
