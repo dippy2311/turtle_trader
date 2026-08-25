@@ -12,7 +12,7 @@ export function getActiveDataSource(): 'upstox' | 'yahoo' {
   return lastUsedSource
 }
 
-export async function fetchOHLCV(symbol: string, days = 300): Promise<OHLCV[]> {
+export async function fetchOHLCV(symbol: string, days = 300, includeLiveCandle = true): Promise<OHLCV[]> {
   // Strip Yahoo-style suffix — Upstox uses plain NSE trading symbols
   const cleanSymbol = symbol.replace('.NS', '')
 
@@ -24,7 +24,7 @@ export async function fetchOHLCV(symbol: string, days = 300): Promise<OHLCV[]> {
         lastUsedSource = 'upstox'
         return bars
       }
-      const bars = await fetchUpstoxOHLCV(cleanSymbol, days)
+      const bars = await fetchUpstoxOHLCV(cleanSymbol, days, includeLiveCandle)
       lastUsedSource = 'upstox'
       return bars
     } catch (e) {
