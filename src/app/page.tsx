@@ -207,20 +207,36 @@ function ScannerTab() {
         return
       }
 
-      // Fresh scan — collect all signals from all batches, but DON'T push to
-      // state until every batch has completed. This keeps the bull buffering
-      // animation visible for the full scan instead of flashing away after
-      // the first batch resolves.
-      let allSignals=[...(data0.signals??[])]
+      // Fresh scan — fire all remaining batches IN PARALLEL rather than
+      // sequentially. A long sequential await-chain (60-90s total) is
+      // vulnerable to iOS Safari throttling/killing the JS context mid-way,
+      // which is what caused scans to hang forever on iPhone while working
+      // fine on desktop Chrome. Firing in parallel finishes in roughly the
+      // time of the SLOWEST single batch (~10-15s) instead of the sum of
+      // all of them, closing that vulnerability window almost entirely.
+      // A 25s per-batch timeout guarantees the UI never hangs indefinitely
+      // even if one batch genuinely stalls — it just proceeds without it.
       const totalBatches=7 // 7 batches × 50 = 350 stocks
 
-      for(let b=1; b<totalBatches; b++){
-        try {
-          const res=await fetch(`/api/scan?batch=${b}${force?'&force=1':''}`)
+      const fetchBatchWithTimeout=async(b:number, timeoutMs=25000)=>{
+        const controller=new AbortController()
+        const timer=setTimeout(()=>controller.abort(), timeoutMs)
+        try{
+          const res=await fetch(`/api/scan?batch=${b}${force?'&force=1':''}`, { signal: controller.signal })
           const data=await res.json()
-          allSignals=[...allSignals,...(data.signals??[])]
-        } catch(e){ console.warn('Batch '+b+' failed:', e) }
+          return data.signals??[]
+        }catch(e){
+          console.warn('Batch '+b+' failed or timed out:', e)
+          return []
+        }finally{
+          clearTimeout(timer)
+        }
       }
+
+      const batchPromises=Array.from({length: totalBatches-1}, (_,i)=>fetchBatchWithTimeout(i+1))
+      const batchResults=await Promise.all(batchPromises)
+
+      let allSignals=[...(data0.signals??[]), ...batchResults.flat()]
 
       // All batches done — now reveal results in one go
       const counts:{[k:string]:number}={BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0}
@@ -231,6 +247,8 @@ function ScannerTab() {
       setSignals(deduped)
       setCounts(counts as any)
       setMeta({scan_date:data0.scan_date,total_scanned:allSignals.length,cached:false,is_market_hours:data0.is_market_hours,data_source:data0.data_source})
+    } catch(e) {
+      console.error('Scan failed entirely:', e)
     } finally { setScanning(false) }
   },[])
 
