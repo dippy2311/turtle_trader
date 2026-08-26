@@ -376,7 +376,7 @@ export function evaluate(
   let signal: SignalResult['signal']
   if (aiScore >= 94 && turtleCount >= 6) {
     signal = 'STRONG BUY'
-  } else if (aiScore >= 88 && turtleCount >= 4) {
+  } else if (aiScore >= 80 && turtleCount >= 4) {
     signal = 'BUY'
   } else if (aiScore >= 75) {
     signal = 'WATCH'
