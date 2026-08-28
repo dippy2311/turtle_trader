@@ -514,7 +514,10 @@ function PortfolioTab() {
 
   const summary=data?.summary??{}
   const positions=data?.positions??[]
+  const tradeHistory=data?.trade_history??[]
+  const perf=data?.performance??{}
   const pnlColor=(summary.total_pnl??0)>=0?'var(--buy)':'var(--sell)'
+  const [portfolioView,setPortfolioView]=useState<'open'|'history'>('open')
 
   const addPosition=async()=>{
     setAddError('')
@@ -652,9 +655,111 @@ function PortfolioTab() {
           </div>
         )}
       </div>
-      <div style={{ marginTop:16, marginBottom:8, fontWeight:600 }}>Open Positions ({positions.length})</div>
+
+      {/* Performance Summary — proves out scanner performance over time */}
+      {!loading && (perf.closed_trades>0 || perf.open_trades>0) && (
+        <div className="card" style={{ marginTop:12 }}>
+          <div className="section-label">Performance Summary</div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:8 }}>
+            <div style={{ background:'var(--bg-elevated)', borderRadius:10, padding:10 }}>
+              <div style={{ fontSize:10, color:'var(--text-3)' }}>Bought</div>
+              <div style={{ fontSize:14, fontWeight:700 }}>{fmt(perf.total_bought??0)}</div>
+            </div>
+            <div style={{ background:'var(--bg-elevated)', borderRadius:10, padding:10 }}>
+              <div style={{ fontSize:10, color:'var(--text-3)' }}>Sold</div>
+              <div style={{ fontSize:14, fontWeight:700 }}>{fmt(perf.total_sold??0)}</div>
+            </div>
+            <div style={{ background:(perf.realised_pnl??0)>=0?'var(--buy-bg)':'var(--sell-bg)', borderRadius:10, padding:10 }}>
+              <div style={{ fontSize:10, color:'var(--text-3)' }}>Realised P&L</div>
+              <div style={{ fontSize:14, fontWeight:700, color:(perf.realised_pnl??0)>=0?'var(--buy)':'var(--sell)' }}>{fmt(perf.realised_pnl??0)}</div>
+            </div>
+            <div style={{ background:(perf.unrealised_pnl??0)>=0?'var(--buy-bg)':'var(--sell-bg)', borderRadius:10, padding:10 }}>
+              <div style={{ fontSize:10, color:'var(--text-3)' }}>Unrealised P&L (Open)</div>
+              <div style={{ fontSize:14, fontWeight:700, color:(perf.unrealised_pnl??0)>=0?'var(--buy)':'var(--sell)' }}>{fmt(perf.unrealised_pnl??0)}</div>
+            </div>
+          </div>
+
+          {perf.closed_trades>0 && (
+            <>
+              <div className="divider"/>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontSize:10, color:'var(--text-3)' }}>Win Rate</div>
+                  <div style={{ fontSize:16, fontWeight:700, color: perf.win_rate>=50?'var(--buy)':'var(--sell)' }}>{(perf.win_rate??0).toFixed(0)}%</div>
+                </div>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontSize:10, color:'var(--text-3)' }}>Trades Closed</div>
+                  <div style={{ fontSize:16, fontWeight:700 }}>{perf.closed_trades}</div>
+                </div>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontSize:10, color:'var(--text-3)' }}>Win / Loss</div>
+                  <div style={{ fontSize:16, fontWeight:700 }}><span style={{ color:'var(--buy)' }}>{perf.winning_trades}</span> / <span style={{ color:'var(--sell)' }}>{perf.losing_trades}</span></div>
+                </div>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:8 }}>
+                <div style={{ background:'var(--bg-elevated)', borderRadius:8, padding:8 }}>
+                  <div style={{ fontSize:10, color:'var(--text-3)' }}>Best Trade</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--buy)' }}>{fmt(perf.biggest_win??0)}</div>
+                </div>
+                <div style={{ background:'var(--bg-elevated)', borderRadius:8, padding:8 }}>
+                  <div style={{ fontSize:10, color:'var(--text-3)' }}>Worst Trade</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--sell)' }}>{fmt(perf.biggest_loss??0)}</div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Open / History toggle */}
+      <div style={{ display:'flex', gap:6, marginTop:16, marginBottom:8 }}>
+        <button onClick={()=>setPortfolioView('open')} style={{
+          flex:1, padding:'8px 0', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer',
+          background: portfolioView==='open' ? 'var(--accent-bg)' : 'transparent',
+          border: `1px solid ${portfolioView==='open' ? 'var(--accent)' : 'var(--border)'}`,
+          color: portfolioView==='open' ? 'var(--accent)' : 'var(--text-2)',
+        }}>Open ({positions.length})</button>
+        <button onClick={()=>setPortfolioView('history')} style={{
+          flex:1, padding:'8px 0', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer',
+          background: portfolioView==='history' ? 'var(--accent-bg)' : 'transparent',
+          border: `1px solid ${portfolioView==='history' ? 'var(--accent)' : 'var(--border)'}`,
+          color: portfolioView==='history' ? 'var(--accent)' : 'var(--text-2)',
+        }}>History ({tradeHistory.length})</button>
+      </div>
+
       {loading?<div className="skeleton" style={{ height:140, borderRadius:12 }}/>
-      :positions.length===0?(
+      :portfolioView==='history'?(
+        tradeHistory.length===0?(
+          <div style={{ textAlign:'center', padding:50, color:'var(--text-2)' }}>
+            <div style={{ fontSize:36 }}>📜</div>
+            <div style={{ fontWeight:600, marginTop:8 }}>No closed trades yet</div>
+            <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Sold positions will appear here with their final P&L</div>
+          </div>
+        ):tradeHistory.map((trade:any)=>(
+          <div key={trade.id} className="card" style={{ marginBottom:10 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
+              <div>
+                <div style={{ fontWeight:700, fontSize:16 }}>{trade.symbol}</div>
+                <div style={{ fontSize:11, color:'var(--text-3)' }}>{trade.entry_date} → {trade.exit_date}</div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <div style={{ fontWeight:700, color:(trade.final_pnl??0)>=0?'var(--buy)':'var(--sell)' }}>{fmt(trade.final_pnl??0)}</div>
+                <div style={{ fontSize:11, color:'var(--text-3)' }}>{trade.quantity} shares</div>
+              </div>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+              <div style={{ background:'var(--bg-elevated)', borderRadius:6, padding:8 }}>
+                <div style={{ fontSize:10, color:'var(--text-3)' }}>Bought at</div>
+                <div style={{ fontSize:13, fontWeight:600 }}>{fmt(trade.avg_price)}</div>
+              </div>
+              <div style={{ background:'var(--bg-elevated)', borderRadius:6, padding:8 }}>
+                <div style={{ fontSize:10, color:'var(--text-3)' }}>Sold at</div>
+                <div style={{ fontSize:13, fontWeight:600 }}>{fmt(trade.exit_price)}</div>
+              </div>
+            </div>
+          </div>
+        ))
+      ):positions.length===0?(
         <div style={{ textAlign:'center', padding:50, color:'var(--text-2)' }}>
           <div style={{ fontSize:36 }}>📭</div>
           <div style={{ fontWeight:600, marginTop:8 }}>No open positions</div>
