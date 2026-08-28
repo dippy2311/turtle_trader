@@ -8,16 +8,27 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const db = supabaseAdmin()
 
-  const { data: positions } = await db
+  // Fetch OPEN and CLOSED positions separately — CLOSED rows are your trade
+  // history (full exits + partial-sell records), needed to show bought/sold/
+  // profit-loss summaries that actually prove out the scanner's performance.
+  const { data: openPositions } = await db
     .from('positions')
     .select('*')
     .eq('user_id', userId)
     .eq('status', 'OPEN')
 
-  if (!positions?.length) return NextResponse.json({ positions: [], summary: { total_pnl: 0, portfolio_value: 0, cash_balance: 0, open_positions: 0 } })
+  const { data: closedPositions } = await db
+    .from('positions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'CLOSED')
+    .order('exit_date', { ascending: false })
 
-  // Refresh prices
-  const enriched = await Promise.all(positions.map(async pos => {
+  const open = openPositions ?? []
+  const closed = closedPositions ?? []
+
+  // Refresh live prices for open positions only
+  const enrichedOpen = await Promise.all(open.map(async pos => {
     try {
       const stock = STOCK_UNIVERSE.find(s => s.nse === pos.symbol)
       const bars = await fetchOHLCV(stock?.symbol ?? `${pos.symbol}.NS`, 5)
@@ -30,19 +41,48 @@ export async function GET(req: NextRequest) {
   }))
 
   const { data: settings } = await db.from('user_settings').select('capital').eq('user_id', userId).single()
-  const totalDeployed = enriched.reduce((a, p) => a + p.avg_price * p.quantity, 0)
-  const totalPnl = enriched.reduce((a, p) => a + p.pnl, 0)
+  const totalDeployed = enrichedOpen.reduce((a, p) => a + p.avg_price * p.quantity, 0)
+  const unrealisedPnl = enrichedOpen.reduce((a, p) => a + p.pnl, 0)
   const capital = settings?.capital ?? 100000
 
+  // ── Trade performance statistics — bought / sold / P&L / win-rate ─────────
+  const totalBought = [...open, ...closed].reduce((a, p) => a + p.avg_price * p.quantity, 0)
+  const totalSold = closed.reduce((a, p) => a + (p.exit_price ?? 0) * p.quantity, 0)
+  const realisedPnl = closed.reduce((a, p) => a + (p.final_pnl ?? 0), 0)
+  const winningTrades = closed.filter(p => (p.final_pnl ?? 0) > 0)
+  const losingTrades = closed.filter(p => (p.final_pnl ?? 0) < 0)
+  const winRate = closed.length > 0 ? (winningTrades.length / closed.length) * 100 : 0
+  const avgWin = winningTrades.length > 0 ? winningTrades.reduce((a, p) => a + p.final_pnl, 0) / winningTrades.length : 0
+  const avgLoss = losingTrades.length > 0 ? losingTrades.reduce((a, p) => a + p.final_pnl, 0) / losingTrades.length : 0
+  const biggestWin = winningTrades.length > 0 ? Math.max(...winningTrades.map(p => p.final_pnl)) : 0
+  const biggestLoss = losingTrades.length > 0 ? Math.min(...losingTrades.map(p => p.final_pnl)) : 0
+
   return NextResponse.json({
-    positions: enriched,
+    positions: enrichedOpen,      // OPEN positions — unsold, still running
+    trade_history: closed,        // CLOSED positions — full record of every sell
     summary: {
-      total_pnl: totalPnl,
-      portfolio_value: capital + totalPnl,
+      total_pnl: unrealisedPnl,   // kept for backward-compat with existing UI
+      portfolio_value: capital + unrealisedPnl + realisedPnl,
       cash_balance: capital - totalDeployed,
       total_deployed: totalDeployed,
-      open_positions: enriched.length,
+      open_positions: enrichedOpen.length,
       capital,
+    },
+    performance: {
+      total_bought: totalBought,           // total ₹ ever deployed (open + closed)
+      total_sold: totalSold,               // total ₹ received from all exits
+      unrealised_pnl: unrealisedPnl,       // P&L on positions still open
+      realised_pnl: realisedPnl,           // P&L actually locked in from closed trades
+      total_pnl: unrealisedPnl + realisedPnl,
+      closed_trades: closed.length,
+      open_trades: enrichedOpen.length,
+      winning_trades: winningTrades.length,
+      losing_trades: losingTrades.length,
+      win_rate: winRate,
+      avg_win: avgWin,
+      avg_loss: avgLoss,
+      biggest_win: biggestWin,
+      biggest_loss: biggestLoss,
     },
   })
 }
