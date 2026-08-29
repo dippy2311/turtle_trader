@@ -703,11 +703,11 @@ function PortfolioTab() {
             </div>
             <div style={{ background:(perf.realised_pnl??0)>=0?'var(--buy-bg)':'var(--sell-bg)', borderRadius:10, padding:10 }}>
               <div style={{ fontSize:10, color:'var(--text-3)' }}>Realised P&L</div>
-              <div style={{ fontSize:14, fontWeight:700, color:(perf.realised_pnl??0)>=0?'var(--buy)':'var(--sell)' }}>{fmt(perf.realised_pnl??0)}</div>
+              <div style={{ fontSize:14, fontWeight:700, color:(perf.realised_pnl??0)>=0?'var(--buy)':'var(--sell)' }}>{fmt(perf.realised_pnl??0)} <span style={{ fontSize:11, fontWeight:600 }}>({pct(perf.realised_pnl_pct??0)})</span></div>
             </div>
             <div style={{ background:(perf.unrealised_pnl??0)>=0?'var(--buy-bg)':'var(--sell-bg)', borderRadius:10, padding:10 }}>
               <div style={{ fontSize:10, color:'var(--text-3)' }}>Unrealised P&L (Open)</div>
-              <div style={{ fontSize:14, fontWeight:700, color:(perf.unrealised_pnl??0)>=0?'var(--buy)':'var(--sell)' }}>{fmt(perf.unrealised_pnl??0)}</div>
+              <div style={{ fontSize:14, fontWeight:700, color:(perf.unrealised_pnl??0)>=0?'var(--buy)':'var(--sell)' }}>{fmt(perf.unrealised_pnl??0)} <span style={{ fontSize:11, fontWeight:600 }}>({pct(perf.unrealised_pnl_pct??0)})</span></div>
             </div>
           </div>
 
@@ -731,11 +731,11 @@ function PortfolioTab() {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:8 }}>
                 <div style={{ background:'var(--bg-elevated)', borderRadius:8, padding:8 }}>
                   <div style={{ fontSize:10, color:'var(--text-3)' }}>Best Trade</div>
-                  <div style={{ fontSize:13, fontWeight:700, color:'var(--buy)' }}>{fmt(perf.biggest_win??0)}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--buy)' }}>{fmt(perf.biggest_win??0)} <span style={{ fontSize:11 }}>({pct(perf.biggest_win_pct??0)})</span></div>
                 </div>
                 <div style={{ background:'var(--bg-elevated)', borderRadius:8, padding:8 }}>
                   <div style={{ fontSize:10, color:'var(--text-3)' }}>Worst Trade</div>
-                  <div style={{ fontSize:13, fontWeight:700, color:'var(--sell)' }}>{fmt(perf.biggest_loss??0)}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--sell)' }}>{fmt(perf.biggest_loss??0)} <span style={{ fontSize:11 }}>({pct(perf.biggest_loss_pct??0)})</span></div>
                 </div>
               </div>
             </>
@@ -776,6 +776,7 @@ function PortfolioTab() {
               </div>
               <div style={{ textAlign:'right' }}>
                 <div style={{ fontWeight:700, color:(trade.final_pnl??0)>=0?'var(--buy)':'var(--sell)' }}>{fmt(trade.final_pnl??0)}</div>
+                <div style={{ fontSize:12, fontWeight:600, color:(trade.final_pnl??0)>=0?'var(--buy)':'var(--sell)' }}>{pct(trade.pnl_pct??0)}</div>
                 <div style={{ fontSize:11, color:'var(--text-3)' }}>{trade.quantity} shares</div>
               </div>
             </div>
