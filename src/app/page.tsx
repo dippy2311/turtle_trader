@@ -163,9 +163,27 @@ function HomeTab({ onNavigate }: { onNavigate:(tab:string)=>void }) {
 }
 
 // ── SCANNER ───────────────────────────────────────────────────────────────────
+// Persist the last scan across page visits — Scanner is now fully manual.
+// Loading from this cache is instant (no network wait), and nothing here
+// triggers a re-scan on its own; only the Scan button does.
+const SCAN_CACHE_KEY='marccet_last_scan_v1'
+function loadCachedScan(){
+  if(typeof window==='undefined') return null
+  try{
+    const raw=localStorage.getItem(SCAN_CACHE_KEY)
+    return raw?JSON.parse(raw):null
+  }catch{ return null }
+}
+function saveCachedScan(signals:any[], counts:any, meta:any){
+  if(typeof window==='undefined') return
+  try{ localStorage.setItem(SCAN_CACHE_KEY, JSON.stringify({signals,counts,meta,savedAt:Date.now()})) }
+  catch{ /* storage full or unavailable — fine to skip persistence silently */ }
+}
+
 function ScannerTab() {
-  const [signals,setSignals]=useState<ScanSignal[]>([])
-  const [counts,setCounts]=useState<Record<string,number>>({BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0})
+  const cached=loadCachedScan()
+  const [signals,setSignals]=useState<ScanSignal[]>(cached?.signals??[])
+  const [counts,setCounts]=useState<Record<string,number>>(cached?.counts??{BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0})
   const [tab,setTab]=useState<'BUY'|'SELL'|'WATCH'|'HOLD'>('BUY')
   const [scanning,setScanning]=useState(false)
   // Calculate market hours client-side immediately (IST = UTC+5:30)
@@ -175,7 +193,7 @@ function ScannerTab() {
     const isWeekday = now.getUTCDay()>=1 && now.getUTCDay()<=5
     return isWeekday && istMin >= 9*60+15 && istMin <= 15*60+30
   }
-  const [meta,setMeta]=useState<any>({is_market_hours: getIsMarketHours()})
+  const [meta,setMeta]=useState<any>(cached?.meta??{is_market_hours: getIsMarketHours()})
   const [search,setSearch]=useState('')
   const [showMyHoldings,setShowMyHoldings]=useState(false)
   const [myHoldingSymbols,setMyHoldingSymbols]=useState<string[]>([])
@@ -201,9 +219,12 @@ function ScannerTab() {
       if(data0.cached && !force){
         const seen0=new Map<string,any>()
         ;(data0.signals??[]).forEach((s:any)=>{ seen0.set(s.symbol,s) })
-        setSignals([...seen0.values()])
+        const dedupedCached=[...seen0.values()]
+        const newMeta={scan_date:data0.scan_date,total_scanned:data0.total_scanned,cached:true,is_market_hours:data0.is_market_hours,data_source:data0.data_source}
+        setSignals(dedupedCached)
         setCounts(data0.counts??{BUY:0,'STRONG BUY':0,SELL:0,WATCH:0,HOLD:0})
-        setMeta({scan_date:data0.scan_date,total_scanned:data0.total_scanned,cached:true,is_market_hours:data0.is_market_hours,data_source:data0.data_source})
+        setMeta(newMeta)
+        saveCachedScan(dedupedCached, data0.counts, newMeta)
         return
       }
 
@@ -244,15 +265,15 @@ function ScannerTab() {
       const seen=new Map<string,any>()
       allSignals.forEach(s=>{ if(!seen.has(s.symbol)||((s.ai_score??0)>(seen.get(s.symbol).ai_score??0))) seen.set(s.symbol,s) })
       const deduped=[...seen.values()]
+      const freshMeta={scan_date:data0.scan_date,total_scanned:allSignals.length,cached:false,is_market_hours:data0.is_market_hours,data_source:data0.data_source}
       setSignals(deduped)
       setCounts(counts as any)
-      setMeta({scan_date:data0.scan_date,total_scanned:allSignals.length,cached:false,is_market_hours:data0.is_market_hours,data_source:data0.data_source})
+      setMeta(freshMeta)
+      saveCachedScan(deduped, counts, freshMeta)
     } catch(e) {
       console.error('Scan failed entirely:', e)
     } finally { setScanning(false) }
   },[])
-
-  useEffect(()=>{ if(!signals.length) runScan() },[])
 
   // Recompute counts from actual signals — source of truth
   useEffect(()=>{
@@ -400,11 +421,22 @@ function ScannerTab() {
           }}
         >
           {filtered.length===0?(
-            <div style={{ textAlign:'center', padding:60, color:'var(--text-2)' }}>
-              <div style={{ fontSize:40 }}>{tab==='BUY'?'🟢':tab==='SELL'?'🔴':tab==='WATCH'?'🟡':'⚪'}</div>
-              <div style={{ marginTop:8, fontWeight:600 }}>No {tab} signals today</div>
-              <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Tap ↺ Scan to refresh</div>
-            </div>
+            !signals.length?(
+              <div style={{ textAlign:'center', padding:60, color:'var(--text-2)' }}>
+                <div style={{ fontSize:48 }}>🐂</div>
+                <div style={{ marginTop:10, fontWeight:700, fontSize:16 }}>No scan yet</div>
+                <div style={{ fontSize:13, color:'var(--text-3)', marginTop:6, lineHeight:1.6, maxWidth:260, marginLeft:'auto', marginRight:'auto' }}>
+                  Tap {(meta.is_market_hours??getIsMarketHours())?'🟢 Scan Live':'↺ Scan'} above to run your first scan.
+                  Results stay saved on this device until you scan again.
+                </div>
+              </div>
+            ):(
+              <div style={{ textAlign:'center', padding:60, color:'var(--text-2)' }}>
+                <div style={{ fontSize:40 }}>{tab==='BUY'?'🟢':tab==='SELL'?'🔴':tab==='WATCH'?'🟡':'⚪'}</div>
+                <div style={{ marginTop:8, fontWeight:600 }}>No {tab} signals today</div>
+                <div style={{ fontSize:13, color:'var(--text-3)', marginTop:4 }}>Tap ↺ Scan to refresh</div>
+              </div>
+            )
           ):(
             filtered.map((sig,i)=><SignalCard key={sig.symbol} sig={sig} rank={i+1}/>)
           )}
