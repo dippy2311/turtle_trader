@@ -411,9 +411,19 @@ export function evaluate(
     stopLoss = Math.min(atrStop, entryPrice - atrVal) // guarantee at least 1×ATR of room
   }
 
-  // ── TARGETS ──────────────────────────────────────────────────────────────────
-  // Target 1: nearest resistance = 55-day high (if not broken) or +1.5×ATR
-  const target1 = close < high55 ? high55 : close + 1.5 * atrVal
+  // ── TARGETS — both anchored to entryPrice, not `close`, so they stay ────────
+  // consistent with the entry the user is actually being told to trade from.
+  // (Using `close` here was a bug: when price had already pushed well past
+  // high55 while entryPrice was pulled back to the 20 EMA support zone, the
+  // old formula computed a target relative to the CURRENT price rather than
+  // the RECOMMENDED entry — producing a target miles off from what a 1:2 or
+  // resistance-based level should look like relative to where you'd actually
+  // be entering the trade.)
+  //
+  // Target 1: nearest resistance = 55-day high, if entry hasn't already
+  // cleared it — otherwise entry itself is already through resistance, so
+  // fall back to entry + 1.5×ATR as the next reasonable resistance estimate.
+  const target1 = entryPrice < high55 ? high55 : entryPrice + 1.5 * atrVal
   // Target 2: minimum 1:2 risk/reward from entry
   const riskAmount = entryPrice - stopLoss
   const target2 = entryPrice + riskAmount * 2
