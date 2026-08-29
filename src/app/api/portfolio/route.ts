@@ -47,19 +47,31 @@ export async function GET(req: NextRequest) {
 
   // ── Trade performance statistics — bought / sold / P&L / win-rate ─────────
   const totalBought = [...open, ...closed].reduce((a, p) => a + p.avg_price * p.quantity, 0)
+  const closedCostBasis = closed.reduce((a, p) => a + p.avg_price * p.quantity, 0) // what closed trades cost to enter — correct base for realised P&L %
   const totalSold = closed.reduce((a, p) => a + (p.exit_price ?? 0) * p.quantity, 0)
   const realisedPnl = closed.reduce((a, p) => a + (p.final_pnl ?? 0), 0)
-  const winningTrades = closed.filter(p => (p.final_pnl ?? 0) > 0)
-  const losingTrades = closed.filter(p => (p.final_pnl ?? 0) < 0)
-  const winRate = closed.length > 0 ? (winningTrades.length / closed.length) * 100 : 0
+  // Attach each closed trade's own % return (its P&L relative to its own entry cost)
+  const closedWithPct = closed.map(p => {
+    const cost = p.avg_price * p.quantity
+    const pnlPct = cost > 0 ? ((p.final_pnl ?? 0) / cost) * 100 : 0
+    return { ...p, pnl_pct: pnlPct }
+  })
+
+  const winningTrades = closedWithPct.filter(p => (p.final_pnl ?? 0) > 0)
+  const losingTrades = closedWithPct.filter(p => (p.final_pnl ?? 0) < 0)
+  const winRate = closedWithPct.length > 0 ? (winningTrades.length / closedWithPct.length) * 100 : 0
   const avgWin = winningTrades.length > 0 ? winningTrades.reduce((a, p) => a + p.final_pnl, 0) / winningTrades.length : 0
   const avgLoss = losingTrades.length > 0 ? losingTrades.reduce((a, p) => a + p.final_pnl, 0) / losingTrades.length : 0
-  const biggestWin = winningTrades.length > 0 ? Math.max(...winningTrades.map(p => p.final_pnl)) : 0
-  const biggestLoss = losingTrades.length > 0 ? Math.min(...losingTrades.map(p => p.final_pnl)) : 0
+  const bestTrade = winningTrades.length > 0 ? winningTrades.reduce((best, p) => p.final_pnl > best.final_pnl ? p : best) : null
+  const worstTrade = losingTrades.length > 0 ? losingTrades.reduce((worst, p) => p.final_pnl < worst.final_pnl ? p : worst) : null
+  const biggestWin = bestTrade?.final_pnl ?? 0
+  const biggestWinPct = bestTrade?.pnl_pct ?? 0
+  const biggestLoss = worstTrade?.final_pnl ?? 0
+  const biggestLossPct = worstTrade?.pnl_pct ?? 0
 
   return NextResponse.json({
     positions: enrichedOpen,      // OPEN positions — unsold, still running
-    trade_history: closed,        // CLOSED positions — full record of every sell
+    trade_history: closedWithPct, // CLOSED positions — full record of every sell, each with its own pnl_pct
     summary: {
       total_pnl: unrealisedPnl,   // kept for backward-compat with existing UI
       portfolio_value: capital + unrealisedPnl + realisedPnl,
@@ -72,7 +84,9 @@ export async function GET(req: NextRequest) {
       total_bought: totalBought,           // total ₹ ever deployed (open + closed)
       total_sold: totalSold,               // total ₹ received from all exits
       unrealised_pnl: unrealisedPnl,       // P&L on positions still open
+      unrealised_pnl_pct: totalDeployed > 0 ? (unrealisedPnl / totalDeployed) * 100 : 0,
       realised_pnl: realisedPnl,           // P&L actually locked in from closed trades
+      realised_pnl_pct: closedCostBasis > 0 ? (realisedPnl / closedCostBasis) * 100 : 0,
       total_pnl: unrealisedPnl + realisedPnl,
       closed_trades: closed.length,
       open_trades: enrichedOpen.length,
@@ -82,7 +96,9 @@ export async function GET(req: NextRequest) {
       avg_win: avgWin,
       avg_loss: avgLoss,
       biggest_win: biggestWin,
+      biggest_win_pct: biggestWinPct,
       biggest_loss: biggestLoss,
+      biggest_loss_pct: biggestLossPct,
     },
   })
 }
